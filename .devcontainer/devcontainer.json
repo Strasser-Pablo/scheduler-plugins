@@ -1,0 +1,67 @@
+{
+  "name": "kube-scheduler-plugin (out-of-tree)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".",
+    "args": {
+      "GO_VERSION": "1.25",
+      "K8S_MINOR": "1.30.0",
+      "KIND_VERSION": "0.23.0"
+    }
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "runArgs": [
+    // Option A: use host Docker engine (recommended)
+    "-v",
+    "/var/run/docker.sock:/var/run/docker.sock",
+    "--network=kind"
+  ],
+  "remoteUser": "vscode",
+  "containerUser": "vscode",
+  "updateRemoteUserUID": true,
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "username": "vscode",
+      "uid": "1000",
+      "gid": "1000"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-azuretools.vscode-docker",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "redhat.vscode-yaml",
+        "oderwat.indent-rainbow",
+        "usernamehw.errorlens",
+        "eamodio.gitlens",
+        "streetsidesoftware.code-spell-checker",
+        "EditorConfig.EditorConfig"
+      ],
+      "settings": {
+        "go.toolsManagement.autoUpdate": true,
+        "go.testExplorer.enable": true,
+        "go.useLanguageServer": true,
+        "gopls": {
+          "ui.semanticTokens": true
+        },
+        "files.eol": "\n",
+        "editor.formatOnSave": true,
+        "yaml.schemas": {
+          "kubernetes": "manifests/**/*.yaml"
+        }
+      }
+    }
+  },
+  "mounts": [
+    // Persist Go module/cache across container rebuilds
+    "type=volume,src=go-mod-cache,dst=/go/pkg/mod",
+    "type=volume,src=go-build-cache,dst=/home/vscode/.cache/go-build",
+    "source=${localEnv:HOME}/.ssh/id_rsa.pub,target=/home/vscode/.ssh/id_rsa.pub,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": "bash .devcontainer/scripts/post-create.sh",
+  "postStartCommand": "bash .devcontainer/scripts/post-start.sh"
+}
