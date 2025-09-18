@@ -111,3 +111,22 @@ verify:
 .PHONY: clean
 clean:
 	rm -rf ./bin
+
+.PHONY: kind-deploy-test
+kind-deploy-test: local-image
+	# Load images into kind
+	kind load docker-image pablostrasser/k8s-staging-scheduler-plugins:kube-scheduler-v20250918- --name sched
+	kind load docker-image pablostrasser/k8s-staging-scheduler-plugins:controller-v20250918- --name sched
+	# Install CRDs
+	kubectl apply -f config/crd/bases/
+	# Deploy scheduler-plugins resources
+	kubectl apply -f manifests/install/scheduler-serviceaccount.yaml
+	kubectl apply -f manifests/install/scheduler-clusterrole.yaml
+	kubectl apply -f manifests/install/scheduler-clusterrolebinding.yaml
+	kubectl apply -f manifests/install/scheduler-configmap.yaml
+	kubectl apply -f manifests/install/scheduler-deployment.yaml
+	# Deploy test pod
+	kubectl apply -f manifests/install/test-scheduler-plugins-pod.yaml
+	# Wait for test pod to be running
+	kubectl wait --for=condition=Ready pod/test-scheduler-plugins --timeout=60s -n default
+	kubectl get pod test-scheduler-plugins -n default -o wide
