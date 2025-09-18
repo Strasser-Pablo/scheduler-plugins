@@ -297,3 +297,13 @@ type PowerModel struct {
 	// Power = K0 + K1 * e ^(K2 * x) : where x is utilisation
 	// Idle power of node will be K0 + K1
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ConstantScoreArgs holds arguments used to configure the ConstantScore plugin
+type ConstantScoreArgs struct {
+	metav1.TypeMeta `json:",inline"`
+
+	// Score to be returned for all nodes (0-100)
+	Score *int64 `json:"score,omitempty"`
+}

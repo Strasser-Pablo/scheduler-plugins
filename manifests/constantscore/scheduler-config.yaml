@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: constantscore-scheduler-config
+  namespace: scheduler-plugins
+data:
+  scheduler-config.yaml: |
+    apiVersion: kubescheduler.config.k8s.io/v1
+    kind: KubeSchedulerConfiguration
+    leaderElection:
+      leaderElect: false
+    profiles:
+    - schedulerName: constantscore-scheduler
+      plugins:
+        # Disable all default plugins except the essential ones
+        preFilter:
+          disabled:
+          - name: "*"
+        filter:
+          disabled:
+          - name: "*"
+          enabled:
+          - name: NodeUnschedulable
+          - name: NodeName
+          - name: TaintToleration
+          - name: NodeAffinity
+        postFilter:
+          disabled:
+          - name: "*"
+        preScore:
+          disabled:
+          - name: "*"
+        score:
+          disabled:
+          - name: "*"
+          enabled:
+          - name: ConstantScore
+        reserve:
+          disabled:
+          - name: "*"
+        permit:
+          disabled:
+          - name: "*"
+        preBind:
+          disabled:
+          - name: "*"
+        bind:
+          enabled:
+          - name: DefaultBinder
+        postBind:
+          disabled:
+          - name: "*"
+        queueSort:
+          enabled:
+          - name: PrioritySort
+      pluginConfig:
+      - name: ConstantScore
+        args:
+          score: 75

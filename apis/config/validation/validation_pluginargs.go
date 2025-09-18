@@ -109,3 +109,15 @@ func ValidateCoschedulingArgs(args *config.CoschedulingArgs, _ *field.Path) erro
 	}
 	return allErrs.ToAggregate()
 }
+
+func ValidateConstantScoreArgs(args *config.ConstantScoreArgs, _ *field.Path) error {
+	var allErrs field.ErrorList
+	if args.Score < 0 || args.Score > 100 {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("score"),
+			args.Score, "must be between 0 and 100"))
+	}
+	if len(allErrs) == 0 {
+		return nil
+	}
+	return allErrs.ToAggregate()
+}

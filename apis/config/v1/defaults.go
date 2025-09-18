@@ -102,6 +102,10 @@ var (
 	DefaultSySchedProfileNamespace = "default"
 	// DefaultSySchedProfileName is the name of the default syscall profile CR for SySched plugin
 	DefaultSySchedProfileName = "all-syscalls"
+
+	// Defaults for ConstantScore
+	// DefaultConstantScore is the default score returned by the ConstantScore plugin
+	DefaultConstantScore int64 = 50
 )
 
 // SetDefaults_CoschedulingArgs sets the default parameters for Coscheduling plugin.
@@ -248,5 +252,12 @@ func SetDefaults_SySchedArgs(obj *SySchedArgs) {
 
 	if obj.DefaultProfileName == nil {
 		obj.DefaultProfileName = &DefaultSySchedProfileName
+	}
+}
+
+// SetDefaults_ConstantScoreArgs sets the default parameters for ConstantScore plugin.
+func SetDefaults_ConstantScoreArgs(obj *ConstantScoreArgs) {
+	if obj.Score == nil {
+		obj.Score = &DefaultConstantScore
 	}
 }

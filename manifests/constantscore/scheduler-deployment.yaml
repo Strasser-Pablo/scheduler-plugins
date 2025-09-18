@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: constantscore-scheduler
+  namespace: scheduler-plugins
+  labels:
+    app: constantscore-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: constantscore-scheduler
+  template:
+    metadata:
+      labels:
+        app: constantscore-scheduler
+    spec:
+      serviceAccountName: scheduler-plugins-scheduler
+      containers:
+        - name: constantscore-scheduler
+          image: constantscore-scheduler:latest
+          imagePullPolicy: Never
+          command:
+            - /kube-scheduler
+            - --config=/etc/kubernetes/scheduler-config.yaml
+            - --v=10
+          resources:
+            requests:
+              cpu: "0.1"
+              memory: "128Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/kubernetes
+              readOnly: true
+      hostNetwork: false
+      hostPID: false
+      volumes:
+        - name: config
+          configMap:
+            name: constantscore-scheduler-config
