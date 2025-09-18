@@ -51,11 +51,17 @@ RUN GOBIN=/usr/local/bin go install github.com/google/go-containerregistry/cmd/c
 RUN GOBIN=/usr/local/bin go install github.com/google/ko@v0.17.0
 
 
+
 # Docker CLI (to use host docker socket)
 RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-25.0.5.tgz | tar -xz -C /usr/local/bin --strip-components=1 docker/docker
 
-# Ensure docker group exists and add vscode to it for persistent group membership
-RUN if ! getent group docker; then groupadd docker; fi \
+# Docker Buildx (for multi-platform builds)
+RUN mkdir -p /usr/local/lib/docker/cli-plugins \
+  && curl -fsSL https://github.com/docker/buildx/releases/download/v0.28.0/buildx-v0.28.0.linux-amd64 -o /usr/local/lib/docker/cli-plugins/docker-buildx \
+  && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+
+# Ensure docker group exists with host GID (997) and add vscode to it
+RUN if getent group docker; then groupmod -g 997 docker; else groupadd -g 997 docker; fi \
   && usermod -aG docker vscode
 
 # Nice shell + completions

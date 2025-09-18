@@ -18,6 +18,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+set -x
+
 SCRIPT_ROOT=$(realpath $(dirname "${BASH_SOURCE[@]}")/..)
 
 SCHEDULER_DIR="${SCRIPT_ROOT}"/build/scheduler
@@ -38,7 +40,10 @@ if [[ "${BUILDER}" == "podman" ]]; then
 fi
 
 cd "${SCRIPT_ROOT}"
-IMAGE_BUILD_CMD=${DOCKER_BUILDX_CMD:-${BUILDER} buildx}
+
+
+# Hardcode the buildx build command for multiarch
+IMAGE_BUILD_CMD="docker buildx build --builder=multiarch-builder"
 
 # use RELEASE_VERSION==v0.0.0 to tell if it's a local image build.
 BLD_INSTANCE=""
@@ -48,24 +53,24 @@ fi
 
 # DOCKER_BUILDX_CMD is an env variable set in CI (valued as "/buildx-entrypoint")
 # If it's set, use it; otherwise use "$BUILDER buildx"
-${IMAGE_BUILD_CMD} build \
-  --platform=${PLATFORMS} \
-  -f ${SCHEDULER_DIR}/Dockerfile \
-  --build-arg RELEASE_VERSION=${RELEASE_VERSION} \
-  --build-arg GO_BASE_IMAGE=${GO_BASE_IMAGE} \
-  --build-arg DISTROLESS_BASE_IMAGE=${DISTROLESS_BASE_IMAGE} \
-  --build-arg CGO_ENABLED=0 \
-  ${EXTRA_ARGS:-}  ${TAG_FLAG:-} ${REGISTRY}/${IMAGE} .
 
-${IMAGE_BUILD_CMD} build \
-  --platform=${PLATFORMS} \
-  -f ${CONTROLLER_DIR}/Dockerfile \
-  --build-arg RELEASE_VERSION=${RELEASE_VERSION} \
-  --build-arg GO_BASE_IMAGE=${GO_BASE_IMAGE} \
-  --build-arg DISTROLESS_BASE_IMAGE=${DISTROLESS_BASE_IMAGE} \
-  --build-arg CGO_ENABLED=0 \
-  ${EXTRA_ARGS:-} ${TAG_FLAG:-} ${REGISTRY}/${CONTROLLER_IMAGE} .
 
+
+
+
+# Build scheduler image
+${IMAGE_BUILD_CMD} --platform=${PLATFORMS} -f ${SCHEDULER_DIR}/Dockerfile --build-arg RELEASE_VERSION=${RELEASE_VERSION} --build-arg GO_BASE_IMAGE=${GO_BASE_IMAGE} --build-arg DISTROLESS_BASE_IMAGE=${DISTROLESS_BASE_IMAGE} --build-arg CGO_ENABLED=0 ${EXTRA_ARGS:-} -t ${RELEASE_IMAGE} .
+
+
+
+
+
+
+# Build controller image
+${IMAGE_BUILD_CMD} --platform=${PLATFORMS} -f ${CONTROLLER_DIR}/Dockerfile --build-arg RELEASE_VERSION=${RELEASE_VERSION} --build-arg GO_BASE_IMAGE=${GO_BASE_IMAGE} --build-arg DISTROLESS_BASE_IMAGE=${DISTROLESS_BASE_IMAGE} --build-arg CGO_ENABLED=0 ${EXTRA_ARGS:-} -t ${RELEASE_CONTROLLER_IMAGE} .
+
+
+# Clean up buildx instance if created
 if [[ ! -z $BLD_INSTANCE ]]; then
-  ${DOCKER_BUILDX_CMD:-${BUILDER} buildx} rm $BLD_INSTANCE
+  docker buildx rm $BLD_INSTANCE
 fi

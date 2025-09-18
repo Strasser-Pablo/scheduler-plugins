@@ -2,10 +2,13 @@
 set -euo pipefail
 
 # Docker socket access
+
+# Always ensure docker group is GID 997 and socket is correct
 if [ -S /var/run/docker.sock ]; then
-  SOCK_GID="$(stat -c '%g' /var/run/docker.sock || echo 0)"
-  if ! getent group docker >/dev/null 2>&1; then
-    sudo groupadd -g "${SOCK_GID}" docker || true
+  if getent group docker >/dev/null 2>&1; then
+    sudo groupmod -g 997 docker || true
+  else
+    sudo groupadd -g 997 docker || true
   fi
   sudo usermod -aG docker vscode || true
   sudo chgrp docker /var/run/docker.sock || true

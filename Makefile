@@ -1,3 +1,5 @@
+# Use docker buildx as the buildx command
+DOCKER_BUILDX_CMD?=docker buildx
 # Copyright 2020 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,10 +29,10 @@ endif
 # REGISTRY is the container registry to push
 # into. The default is to push to the staging
 # registry, not production(registry.k8s.io).
-REGISTRY?=gcr.io/k8s-staging-scheduler-plugins
+REGISTRY?=pablostrasser/k8s-staging-scheduler-plugins
 RELEASE_VERSION?=v$(shell date +%Y%m%d)-$(shell git describe --tags --match "v*")
-RELEASE_IMAGE:=kube-scheduler:$(RELEASE_VERSION)
-RELEASE_CONTROLLER_IMAGE:=controller:$(RELEASE_VERSION)
+RELEASE_IMAGE:=$(REGISTRY):kube-scheduler-$(RELEASE_VERSION)
+RELEASE_CONTROLLER_IMAGE:=$(REGISTRY):controller-$(RELEASE_VERSION)
 GO_BASE_IMAGE?=golang:$(GO_VERSION)
 DISTROLESS_BASE_IMAGE?=gcr.io/distroless/static:nonroot
 EXTRA_ARGS=""
@@ -65,9 +67,10 @@ build-images:
 	REGISTRY=$(REGISTRY) \
 	IMAGE=$(RELEASE_IMAGE) \
 	CONTROLLER_IMAGE=$(RELEASE_CONTROLLER_IMAGE) \
+	RELEASE_IMAGE=$(RELEASE_IMAGE) \
+	RELEASE_CONTROLLER_IMAGE=$(RELEASE_CONTROLLER_IMAGE) \
 	GO_BASE_IMAGE=$(GO_BASE_IMAGE) \
 	DISTROLESS_BASE_IMAGE=$(DISTROLESS_BASE_IMAGE) \
-	DOCKER_BUILDX_CMD=$(DOCKER_BUILDX_CMD) \
 	EXTRA_ARGS=$(EXTRA_ARGS) hack/build-images.sh
 
 .PHONY: local-image
