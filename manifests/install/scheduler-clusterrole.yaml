@@ -1,0 +1,46 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scheduler-plugins-scheduler
+rules:
+  - apiGroups: [""]
+    resources:
+      [
+        "pods",
+        "pods/status",
+        "pods/binding",
+        "pods/eviction",
+        "services",
+        "endpoints",
+        "persistentvolumeclaims",
+        "events",
+        "namespaces",
+        "nodes",
+        "nodes/status",
+        "replicationcontrollers",
+        "persistentvolumes",
+      ]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources:
+      [
+        "csinodes",
+        "csidrivers",
+        "csistoragecapacities",
+        "storageclasses",
+        "volumeattachments",
+      ]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["scheduling.x-k8s.io"]
+    resources:
+      ["podgroups", "elasticquotas", "podgroups/status", "elasticquotas/status"]
+    verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+  - apiGroups: ["topology.node.k8s.io"]
+    resources: ["noderesourcetopologies"]
+    verbs: ["get", "list", "watch"]

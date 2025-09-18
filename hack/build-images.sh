@@ -42,35 +42,14 @@ fi
 cd "${SCRIPT_ROOT}"
 
 
-# Hardcode the buildx build command for multiarch
-IMAGE_BUILD_CMD="docker buildx build --builder=multiarch-builder"
-
-# use RELEASE_VERSION==v0.0.0 to tell if it's a local image build.
-BLD_INSTANCE=""
+# Build images: use docker build for local, buildx for multiarch/CI
 if [[ "${RELEASE_VERSION}" == "v0.0.0" ]]; then
-  BLD_INSTANCE=$($IMAGE_BUILD_CMD create --use)
-fi
-
-# DOCKER_BUILDX_CMD is an env variable set in CI (valued as "/buildx-entrypoint")
-# If it's set, use it; otherwise use "$BUILDER buildx"
-
-
-
-
-
-# Build scheduler image
-${IMAGE_BUILD_CMD} --platform=${PLATFORMS} -f ${SCHEDULER_DIR}/Dockerfile --build-arg RELEASE_VERSION=${RELEASE_VERSION} --build-arg GO_BASE_IMAGE=${GO_BASE_IMAGE} --build-arg DISTROLESS_BASE_IMAGE=${DISTROLESS_BASE_IMAGE} --build-arg CGO_ENABLED=0 ${EXTRA_ARGS:-} -t ${RELEASE_IMAGE} .
-
-
-
-
-
-
-# Build controller image
-${IMAGE_BUILD_CMD} --platform=${PLATFORMS} -f ${CONTROLLER_DIR}/Dockerfile --build-arg RELEASE_VERSION=${RELEASE_VERSION} --build-arg GO_BASE_IMAGE=${GO_BASE_IMAGE} --build-arg DISTROLESS_BASE_IMAGE=${DISTROLESS_BASE_IMAGE} --build-arg CGO_ENABLED=0 ${EXTRA_ARGS:-} -t ${RELEASE_CONTROLLER_IMAGE} .
-
-
-# Clean up buildx instance if created
-if [[ ! -z $BLD_INSTANCE ]]; then
-  docker buildx rm $BLD_INSTANCE
+  # Local build: single-arch, load to local Docker
+  docker build --platform=${PLATFORMS} -f ${SCHEDULER_DIR}/Dockerfile --build-arg RELEASE_VERSION=${RELEASE_VERSION} --build-arg GO_BASE_IMAGE=${GO_BASE_IMAGE} --build-arg DISTROLESS_BASE_IMAGE=${DISTROLESS_BASE_IMAGE} --build-arg CGO_ENABLED=0 ${EXTRA_ARGS:-} -t ${RELEASE_IMAGE} .
+  docker build --platform=${PLATFORMS} -f ${CONTROLLER_DIR}/Dockerfile --build-arg RELEASE_VERSION=${RELEASE_VERSION} --build-arg GO_BASE_IMAGE=${GO_BASE_IMAGE} --build-arg DISTROLESS_BASE_IMAGE=${DISTROLESS_BASE_IMAGE} --build-arg CGO_ENABLED=0 ${EXTRA_ARGS:-} -t ${RELEASE_CONTROLLER_IMAGE} .
+else
+  # Multiarch build for CI/release
+  IMAGE_BUILD_CMD="docker buildx build --builder=multiarch-builder"
+  ${IMAGE_BUILD_CMD} --platform=${PLATFORMS} -f ${SCHEDULER_DIR}/Dockerfile --build-arg RELEASE_VERSION=${RELEASE_VERSION} --build-arg GO_BASE_IMAGE=${GO_BASE_IMAGE} --build-arg DISTROLESS_BASE_IMAGE=${DISTROLESS_BASE_IMAGE} --build-arg CGO_ENABLED=0 ${EXTRA_ARGS:-} -t ${RELEASE_IMAGE} .
+  ${IMAGE_BUILD_CMD} --platform=${PLATFORMS} -f ${CONTROLLER_DIR}/Dockerfile --build-arg RELEASE_VERSION=${RELEASE_VERSION} --build-arg GO_BASE_IMAGE=${GO_BASE_IMAGE} --build-arg DISTROLESS_BASE_IMAGE=${DISTROLESS_BASE_IMAGE} --build-arg CGO_ENABLED=0 ${EXTRA_ARGS:-} -t ${RELEASE_CONTROLLER_IMAGE} .
 fi
