@@ -19,8 +19,13 @@ rules:
         "nodes/status",
         "replicationcontrollers",
         "persistentvolumes",
+        "configmaps",
       ]
     verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # Allow emitting structured events via events.k8s.io API
+  - apiGroups: ["events.k8s.io"]
+    resources: ["events"]
+    verbs: ["create", "patch", "update"]
   - apiGroups: ["apps"]
     resources: ["replicasets", "statefulsets"]
     verbs: ["get", "list", "watch"]

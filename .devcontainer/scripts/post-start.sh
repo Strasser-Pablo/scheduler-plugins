@@ -20,20 +20,23 @@ sudo chown -R vscode:vscode /home/vscode/.kube
 
 _kind()   { sudo -u vscode -g docker -E kind "$@"; }
 
-# Create cluster if missing (idempotent)
-if ! _kind get clusters 2>/dev/null | grep -qx 'sched'; then
-  echo "Creating kind cluster 'sched'..."
-  cat <<'YAML' >/tmp/kind.yaml
+# Recreate cluster 'sched': delete if exists, then create 3-node cluster
+if _kind get clusters 2>/dev/null | grep -qx 'sched'; then
+  echo "Deleting existing kind cluster 'sched'..."
+  _kind delete cluster --name sched || true
+fi
+
+echo "Creating kind cluster 'sched' with 1 control-plane and 2 workers..."
+cat <<'YAML' >/tmp/kind.yaml
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: sched
 nodes:
   - role: control-plane
+  - role: worker
+  - role: worker
 YAML
-  _kind create cluster --config /tmp/kind.yaml
-else
-  echo "kind cluster 'sched' already exists."
-fi
+_kind create cluster --config /tmp/kind.yaml
 
 # Export INTERNAL kubeconfig and point directly at control-plane IP
 _kind export kubeconfig --name sched --kubeconfig /home/vscode/.kube/config --internal
