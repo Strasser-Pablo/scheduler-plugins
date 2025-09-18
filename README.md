@@ -19,6 +19,67 @@ docker pull registry.k8s.io/scheduler-plugins/kube-scheduler:$TAG
 docker pull registry.k8s.io/scheduler-plugins/controller:$TAG
 ```
 
+## Makefile Usage and Automation
+
+This repository provides a comprehensive `Makefile` to automate building, testing, and deploying scheduler-plugins, including local development and Kubernetes-in-Kind workflows.
+
+### Key Targets
+
+- **build**: Builds both the controller and scheduler binaries.
+- **build-images**: Builds Docker images for the scheduler and controller.
+- **local-image**: Builds images for the local architecture and loads them for local testing.
+- **unit-test**: Runs unit tests.
+- **integration-test**: Runs integration tests.
+- **verify**: Runs all verification scripts (formatting, codegen, etc).
+- **clean**: Cleans build artifacts.
+- **kind-deploy-test**: Fully automates the build, image load, CRD install, deployment, and test pod scheduling in a local [kind](https://kind.sigs.k8s.io/) cluster.
+
+### Automated Kind Deployment & Test
+
+The `kind-deploy-test` target is the recommended way to build, deploy, and validate the scheduler-plugins in a local kind cluster. It performs the following steps:
+
+1. Builds scheduler and controller images for your local architecture.
+2. Loads these images into the kind cluster named `sched`.
+3. Installs all required CRDs.
+4. Deploys all scheduler-plugins manifests (RBAC, ConfigMap, Deployment, etc).
+5. Deploys a test pod that uses the custom scheduler.
+6. Waits for the test pod to become ready and prints its status.
+
+#### Usage Example
+
+```sh
+make kind-deploy-test
+```
+
+**Requirements:**
+- Docker (with buildx support)
+- [kind](https://kind.sigs.k8s.io/) cluster named `sched` running
+- kubectl configured to access the kind cluster
+
+**What happens:**
+- Images are built and loaded into kind
+- All manifests and CRDs are applied
+- A test pod is scheduled and its status is shown
+
+If the test pod is `Running` and `Ready`, the deployment is successful.
+
+#### Proxy Configuration
+
+If you encounter Go module download issues, you can set a Go proxy before running the Makefile:
+
+```sh
+go env -w GOPROXY=https://proxy.golang.org,direct
+# or for China: go env -w GOPROXY=https://goproxy.cn,direct
+```
+
+### For LLMs and Automation
+
+- Always use the `kind-deploy-test` target for end-to-end local validation.
+- Ensure all prerequisites (Docker, kind, kubectl) are met.
+- The Makefile is self-documenting; inspect it for more targets and details.
+
+For more details on development workflows, see [doc/develop.md](doc/develop.md).
+
 You can find [how to install release image](doc/install.md) here.
 
 ## Plugins
