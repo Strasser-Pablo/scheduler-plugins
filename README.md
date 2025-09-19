@@ -195,6 +195,23 @@ changed.
 
 </details>
 
+## LLM Development Assistant
+
+For AI/LLM assistance with this repository, see **[LLM.md](LLM.md)** - a comprehensive guide containing:
+
+- **Repository architecture and structure**
+- **Plugin development patterns and best practices** 
+- **Build system and testing workflows**
+- **Configuration examples and common patterns**
+- **Troubleshooting guides and development tips**
+
+Additional LLM guides are available in key directories:
+- `pkg/LLM.md` - Plugin implementation details
+- `apis/LLM.md` - Configuration and API types
+- `cmd/LLM.md` - Main applications and entry points
+- `hack/LLM.md` - Build scripts and automation
+- `manifests/LLM.md` - Kubernetes deployment manifests
+
 ## Community, discussion, contribution, and support
 
 Learn how to engage with the Kubernetes community on the [community page](http://kubernetes.io/community/).
