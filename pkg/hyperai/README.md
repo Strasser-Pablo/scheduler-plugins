@@ -4,10 +4,23 @@ The HyperAI plugin is a Kubernetes scheduler ScorePlugin that connects to a Pyth
 
 ## Architecture
 
+
 The plugin consists of:
 - A Go scheduler plugin (`pkg/hyperai/hyperai.go`) that implements the ScorePlugin interface
 - A Python gRPC server (`hack/hyperai-grpc/server.py`) that provides scoring services
 - Protocol Buffers definition (`hack/hyperai-grpc/hyperai.proto`) for service communication
+
+**Protocol Update:**
+The plugin now sends the full Pod and Node specs as JSON strings in the gRPC request, not just names. The proto message is:
+
+```proto
+message ScoreRequest {
+  string pod_json = 1;   // Full Pod spec as JSON
+  string node_json = 2; // Full Node spec as JSON
+}
+```
+
+The Python server and test client have been updated to handle these fields.
 
 ## Features
 - **gRPC Connectivity**: Full integration with Python gRPC server for real-time scoring
@@ -56,5 +69,7 @@ make hyperai-test-grpc
 - The plugin is implemented in Go in `pkg/hyperai/hyperai.go`.
 - The Python gRPC server is in `hack/hyperai-grpc/server.py`.
 - gRPC code generation is automated via `make hyperai-proto`.
+- The plugin now serializes the full Pod and Node objects to JSON and sends them in the gRPC request.
+- The Python server receives and can parse these JSON fields for advanced scoring logic.
 - The plugin gracefully handles gRPC connection failures by falling back to constant scoring.
 - Currently returns a constant score of 42 but the gRPC infrastructure is in place for advanced scoring algorithms.

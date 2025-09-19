@@ -24,13 +24,14 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rhyperai.proto\x12\x07hyperai\"3\n\x0cScoreRequest\x12\x10\n\x08pod_name\x18\x01 \x01(\t\x12\x11\n\tnode_name\x18\x02 \x01(\t\"\x1b\n\nScoreReply\x12\r\n\x05score\x18\x01 \x01(\x03\x32\x43\n\x07HyperAI\x12\x38\n\x08GetScore\x12\x15.hyperai.ScoreRequest\x1a\x13.hyperai.ScoreReply\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rhyperai.proto\x12\x07hyperai\"3\n\x0cScoreRequest\x12\x10\n\x08pod_json\x18\x01 \x01(\t\x12\x11\n\tnode_json\x18\x02 \x01(\t\"\x1b\n\nScoreReply\x12\r\n\x05score\x18\x01 \x01(\x03\x32\x43\n\x07HyperAI\x12\x38\n\x08GetScore\x12\x15.hyperai.ScoreRequest\x1a\x13.hyperai.ScoreReply\"\x00\x42+Z)sigs.k8s.io/scheduler-plugins/pkg/hyperaib\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'hyperai_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-  DESCRIPTOR._loaded_options = None
+  _globals['DESCRIPTOR']._loaded_options = None
+  _globals['DESCRIPTOR']._serialized_options = b'Z)sigs.k8s.io/scheduler-plugins/pkg/hyperai'
   _globals['_SCOREREQUEST']._serialized_start=26
   _globals['_SCOREREQUEST']._serialized_end=77
   _globals['_SCOREREPLY']._serialized_start=79

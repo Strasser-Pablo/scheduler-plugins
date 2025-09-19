@@ -159,13 +159,14 @@ profiles:
    - Useful for testing and baselines
 
 2. **HyperAI** (`pkg/hyperai/`)
-   - **Advanced gRPC-based scoring plugin**
-   - Connects to Python gRPC server for machine learning scoring
-   - **Architecture**: Supports both sidecar and service deployment
-   - **Protocol Buffers**: Type-safe gRPC communication
-   - **Fallback Logic**: Returns constant score if gRPC unavailable
-   - **Configuration**: Configurable gRPC address and fallback score
-   - **Use Cases**: ML-based node scoring, custom scoring algorithms
+  - **Advanced gRPC-based scoring plugin**
+  - Connects to Python gRPC server for machine learning scoring
+  - **Architecture**: Supports both sidecar and service deployment
+  - **Protocol Buffers**: Type-safe gRPC communication
+  - **Protocol Update**: Sends full Pod and Node specs as JSON in the gRPC request (see proto in `pkg/hyperai/README.md`)
+  - **Fallback Logic**: Returns constant score if gRPC unavailable
+  - **Configuration**: Configurable gRPC address and fallback score
+  - **Use Cases**: ML-based node scoring, custom scoring algorithms
 
 3. **PodState** (`pkg/podstate/`)
    - Basic scoring example

@@ -9,10 +9,19 @@ def test_client():
     with grpc.insecure_channel('localhost:50051') as channel:
         stub = hyperai_pb2_grpc.HyperAIStub(channel)
         
-        # Create a test request
+        # Create a test request with full pod and node JSON
+        import json
+        pod_obj = {
+            "metadata": {"name": "test-pod", "namespace": "default"},
+            "spec": {"containers": [{"name": "c", "image": "busybox"}]}
+        }
+        node_obj = {
+            "metadata": {"name": "test-node"},
+            "status": {"capacity": {"cpu": "4", "memory": "8Gi"}}
+        }
         request = hyperai_pb2.ScoreRequest(
-            pod_name="test-pod",
-            node_name="test-node"
+            pod_json=json.dumps(pod_obj),
+            node_json=json.dumps(node_obj)
         )
         
         # Call the GetScore method

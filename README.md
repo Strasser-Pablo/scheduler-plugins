@@ -39,7 +39,11 @@ This repository has been configured with a specialized `Makefile` focused on bui
 
 ## HyperAI Plugin Makefile
 
+
 The repository also includes full support for the **HyperAI** plugin, which connects to a Python gRPC server for advanced node scoring. The plugin supports both standalone service and sidecar deployment architectures.
+
+**Protocol Note:**
+The HyperAI plugin now sends the full Pod and Node specs as JSON strings in the gRPC request, not just names. See `pkg/hyperai/README.md` for details and proto example.
 
 ### HyperAI Architecture Options
 

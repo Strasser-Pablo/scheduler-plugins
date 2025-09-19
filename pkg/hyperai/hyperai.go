@@ -1,7 +1,7 @@
 package hyperai
 
-import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -42,10 +42,22 @@ func (p *HyperAI) Score(ctx context.Context, state *framework.CycleState, pod *v
 	// Create gRPC client
 	client := NewHyperAIClient(conn)
 
+	// Marshal pod and node to JSON
+	podJSON, err := podToJSON(pod)
+	if err != nil {
+		p.logger.Error(err, "Failed to marshal pod to JSON, using fallback score", "pod", pod.Name)
+		return p.args.Score, nil
+	}
+	nodeJSON, err := nodeToJSON(nodeInfo.Node())
+	if err != nil {
+		p.logger.Error(err, "Failed to marshal node to JSON, using fallback score", "node", nodeInfo.Node().Name)
+		return p.args.Score, nil
+	}
+
 	// Create request
 	request := &ScoreRequest{
-		PodName:  pod.Name,
-		NodeName: nodeInfo.Node().Name,
+		PodJson:  podJSON,
+		NodeJson: nodeJSON,
 	}
 
 	// Call gRPC service
@@ -58,6 +70,24 @@ func (p *HyperAI) Score(ctx context.Context, state *framework.CycleState, pod *v
 
 	p.logger.Info("✅ HyperAI gRPC SUCCESS: Received score from gRPC server", "score", response.Score, "pod", pod.Name, "node", nodeInfo.Node().Name, "grpcAddress", p.args.GRPCAddress)
 	return response.Score, nil
+
+// podToJSON marshals a Pod to JSON string
+func podToJSON(pod *v1.Pod) (string, error) {
+	data, err := json.Marshal(pod)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// nodeToJSON marshals a Node to JSON string
+func nodeToJSON(node *v1.Node) (string, error) {
+	data, err := json.Marshal(node)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
 }
 
 // ScoreExtensions of the Score plugin.

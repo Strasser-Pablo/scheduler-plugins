@@ -7,8 +7,10 @@ import hyperai_pb2_grpc
 
 class HyperAIServicer(hyperai_pb2_grpc.HyperAIServicer):
     def GetScore(self, request, context):
-        # Return a different score to distinguish from fallback
-        print(f"📡 gRPC request received: pod={request.pod_name}, node={request.node_name}")
+        # Print received pod and node JSON
+        print(f"📡 gRPC request received:")
+        print(f"  pod_json: {request.pod_json[:200]}{'...' if len(request.pod_json) > 200 else ''}")
+        print(f"  node_json: {request.node_json[:200]}{'...' if len(request.node_json) > 200 else ''}")
         grpc_score = 88  # Different from fallback score (42) to prove gRPC is working
         print(f"📡 gRPC response: score={grpc_score}")
         return hyperai_pb2.ScoreReply(score=grpc_score)
