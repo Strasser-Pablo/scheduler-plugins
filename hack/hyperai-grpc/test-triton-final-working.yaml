@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-triton-final-working
+  annotations:
+    scheduler-plugins.io/hyperai-strategy: "comprehensive"
+spec:
+  schedulerName: hyperai-scheduler
+  containers:
+  - name: test-container
+    image: busybox:1.35
+    command: ["sleep", "300"]
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+  restartPolicy: Never

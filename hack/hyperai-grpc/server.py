@@ -85,7 +85,7 @@ class HyperAIServicer(hyperai_pb2_grpc.HyperAIServicer):
 
     def _call_node_agent(self, node_name, pod_json, node_json, pod_name, pod_namespace):
         """
-        Call the node agent on the specified node
+        Call the node agent on the specified node via gRPC
         Uses node IP since DaemonSet runs with hostNetwork: true
         """
         try:

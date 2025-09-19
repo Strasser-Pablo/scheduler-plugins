@@ -1,6 +1,3 @@
-# ConstantScore Plugin Makefile
-# Focused build system for the ConstantScore scheduler plugin
-#
 # Copyright 2020 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,22 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-GO_VERSION := $(shell awk '/^go /{print $$2}' go.mod|head -n1)
-INTEGTESTENVVAR=SCHED_PLUGINS_TEST_VERBOSE=1
+# Build configurations
+COMMONENVVAR=GOOS=$(shell uname -s | tr A-Z a-z) GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m)))
+BUILDENVVAR=CGO_ENABLED=0 $(COMMONENVVAR)
 
-# ConstantScore specific configuration
-CONSTANTSCORE_IMAGE_NAME ?= constantscore-scheduler
-CONSTANTSCORE_IMAGE_TAG ?= latest
+# Go Build Environment
+ARCHS=amd64 arm64
+TAG=v$(shell date +%m%d%H%M)
+REGISTRY?=localhost:5000
+IMAGE_BUILD_EXTRA_OPTS?=
 
-# HyperAI specific configuration
-HYPERAI_IMAGE_NAME ?= hyperai-scheduler
-HYPERAI_IMAGE_TAG ?= latest
+# Build versioning
+VERSION?=v1.33.3
+RELEASE_VERSION?=$(VERSION)
+LOCALBIN ?= $(shell pwd)/bin
+CONTROLLER_TOOLS_VERSION ?= v0.16.1
+ENVTEST_K8S_VERSION = 1.32.x
 
-KIND_CLUSTER_NAME ?= sched
+# Image configurations
+HYPERAI_IMAGE_NAME=hyperai-scheduler
+HYPERAI_IMAGE_TAG=latest
+KIND_CLUSTER_NAME=sched
 
-# VERSION is the scheduler's version
-VERSION ?= v0.0.$(shell date +%Y%m%d)
+GOPATH?=$(shell go env GOPATH)
 
+# Core build targets
 .PHONY: all
 all: build
 
@@ -39,44 +45,85 @@ build: build-scheduler
 
 .PHONY: build-scheduler
 build-scheduler:
-	CGO_ENABLED=0 GOOS=linux $(GO_BUILD_ENV) go build -ldflags '-X k8s.io/component-base/version.gitVersion=$(VERSION) -w' -o bin/kube-scheduler cmd/scheduler/main.go
+	$(BUILDENVVAR) go build -ldflags '-X k8s.io/component-base/version.gitVersion=$(VERSION) -w' -o bin/kube-scheduler cmd/scheduler/main.go
 
-# ConstantScore specific targets
+.PHONY: build-controller
+build-controller:
+	$(BUILDENVVAR) go build -ldflags '-X k8s.io/component-base/version.gitVersion=$(VERSION) -w' -o bin/controller cmd/controller/main.go
+
+.PHONY: update-vendor
+update-vendor:
+	hack/update-vendor.sh
+
+.PHONY: unit-test
+unit-test:
+	hack/unit-test.sh
+
+.PHONY: install-etcd
+install-etcd:
+	hack/install-etcd.sh
+
+.PHONY: install-envtest
+install-envtest: $(LOCALBIN)
+	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+.PHONY: integration-test
+integration-test: install-etcd install-envtest
+	hack/integration-test.sh
+
+.PHONY: verify
+verify:
+	hack/verify-gofmt.sh
+	hack/verify-gomod.sh
+	hack/verify-structured-logging.sh
+	hack/verify-toc.sh
+
+.PHONY: clean
+clean:
+	rm -rf ./bin
+
+# Controller gen tool for manifests
+.PHONY: controller-gen
+controller-gen: $(LOCALBIN) ## Download controller-gen locally if necessary.
+	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+# ConstantScore Plugin targets
 .PHONY: constantscore-image
-constantscore-image: build-scheduler
-	docker build -f Dockerfile.constantscore -t $(CONSTANTSCORE_IMAGE_NAME):$(CONSTANTSCORE_IMAGE_TAG) .
+constantscore-image:
+	@echo "Building ConstantScore image..."
+	CGO_ENABLED=0 GOOS=linux $(BUILDENVVAR) go build -ldflags '-X k8s.io/component-base/version.gitVersion=$(VERSION) -w' -o bin/kube-scheduler cmd/scheduler/main.go
+	docker build -f Dockerfile.constantscore -t constantscore-scheduler:latest .
 
 .PHONY: constantscore-load-kind
 constantscore-load-kind: constantscore-image
-	kind load docker-image $(CONSTANTSCORE_IMAGE_NAME):$(CONSTANTSCORE_IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
+	kind load docker-image constantscore-scheduler:latest --name $(KIND_CLUSTER_NAME)
 
-.PHONY: constantscore-setup-rbac
-constantscore-setup-rbac:
-	@echo "Setting up namespace and RBAC for ConstantScore..."
+.PHONY: constantscore-deploy
+constantscore-deploy: constantscore-load-kind
+	@echo "Deploying ConstantScore scheduler..."
 	kubectl get ns scheduler-plugins >/dev/null 2>&1 || kubectl create ns scheduler-plugins
 	kubectl apply -f manifests/install/scheduler-serviceaccount.yaml
 	kubectl apply -f manifests/install/scheduler-clusterrole.yaml
 	kubectl apply -f manifests/install/scheduler-clusterrolebinding.yaml
-
-.PHONY: constantscore-deploy
-constantscore-deploy: constantscore-load-kind constantscore-setup-rbac
-	@echo "Deploying ConstantScore scheduler..."
 	kubectl apply -f manifests/constantscore/scheduler-config.yaml
 	kubectl apply -f manifests/constantscore/scheduler-deployment.yaml
-	kubectl -n scheduler-plugins rollout status deploy/constantscore-scheduler --timeout=120s
+	kubectl -n scheduler-plugins rollout status deploy/constantscore-scheduler --timeout=90s
 
 .PHONY: constantscore-test
 constantscore-test: constantscore-deploy
-	@echo "Running ConstantScore test pod..."
+	@echo "Running ConstantScore test..."
 	kubectl apply -f manifests/constantscore/test-pod.yaml
-	kubectl wait --for=condition=Ready pod/constantscore-test-pod --timeout=90s
-	@echo "Test pod deployed successfully!"
-	kubectl get pod constantscore-test-pod -o wide
+	kubectl wait --for=condition=Ready pod/test-constantscore --timeout=60s
+	@echo "ConstantScore test pod deployed successfully!"
+	kubectl get pod test-constantscore -o wide
 
 .PHONY: constantscore-logs
 constantscore-logs:
-	@echo "Fetching ConstantScore scheduler logs..."
-	kubectl -n scheduler-plugins logs deploy/constantscore-scheduler --tail=200 | grep -i "Returning constant score" || true
+	@echo "Fetching ConstantScore logs..."
+	kubectl -n scheduler-plugins logs deploy/constantscore-scheduler --tail=50 | grep -i constantscore || true
 
 .PHONY: constantscore-cleanup
 constantscore-cleanup:
@@ -88,7 +135,7 @@ constantscore-cleanup:
 .PHONY: constantscore-full-test
 constantscore-full-test: constantscore-cleanup constantscore-test constantscore-logs
 
-# HyperAI specific targets
+# HyperAI Production targets (Real NVIDIA Triton ML Inference)
 .PHONY: hyperai-proto
 hyperai-proto:
 	@echo "Generating gRPC code for HyperAI..."
@@ -96,19 +143,20 @@ hyperai-proto:
 	cd pkg/hyperai && protoc --go_out=. --go-grpc_out=. -I../../hack/hyperai-grpc ../../hack/hyperai-grpc/hyperai.proto
 	cd pkg/hyperai && mv sigs.k8s.io/scheduler-plugins/pkg/hyperai/*.go . && rm -rf sigs.k8s.io || true
 
-.PHONY: hyperai-image
-hyperai-image: build-scheduler
+.PHONY: hyperai-build-images
+hyperai-build-images:
+	@echo "Building all HyperAI images..."
+	CGO_ENABLED=0 GOOS=linux $(BUILDENVVAR) go build -ldflags '-X k8s.io/component-base/version.gitVersion=$(VERSION) -w' -o bin/kube-scheduler cmd/scheduler/main.go
 	docker build -f Dockerfile.constantscore -t $(HYPERAI_IMAGE_NAME):$(HYPERAI_IMAGE_TAG) .
-
-.PHONY: hyperai-grpc-image
-hyperai-grpc-image:
-	@echo "Building HyperAI gRPC server image..."
 	cd hack/hyperai-grpc && docker build -t hyperai-grpc-server:latest .
+	cd hack/hyperai-grpc && docker build -f Dockerfile.triton-node-agent -t hyperai-triton-node-agent:latest .
 
 .PHONY: hyperai-load-kind
-hyperai-load-kind: hyperai-image hyperai-grpc-image
+hyperai-load-kind: hyperai-build-images
+	@echo "Loading HyperAI images into Kind cluster..."
 	kind load docker-image $(HYPERAI_IMAGE_NAME):$(HYPERAI_IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
 	kind load docker-image hyperai-grpc-server:latest --name $(KIND_CLUSTER_NAME)
+	kind load docker-image hyperai-triton-node-agent:latest --name $(KIND_CLUSTER_NAME)
 
 .PHONY: hyperai-setup-rbac
 hyperai-setup-rbac:
@@ -117,224 +165,126 @@ hyperai-setup-rbac:
 	kubectl apply -f manifests/install/scheduler-serviceaccount.yaml
 	kubectl apply -f manifests/install/scheduler-clusterrole.yaml
 	kubectl apply -f manifests/install/scheduler-clusterrolebinding.yaml
-
-.PHONY: hyperai-start-grpc
-hyperai-start-grpc:
-	@echo "Starting HyperAI Python gRPC server..."
-	cd hack/hyperai-grpc && python3 server.py &
-	@echo "Waiting for gRPC server to start..."
-	sleep 3
-
-.PHONY: hyperai-stop-grpc
-hyperai-stop-grpc:
-	@echo "Stopping HyperAI Python gRPC server..."
-	pkill -f "python3 server.py" || true
-
-.PHONY: hyperai-test-grpc
-hyperai-test-grpc:
-	@echo "Testing HyperAI gRPC connection..."
-	cd hack/hyperai-grpc && python3 test_client.py
+	kubectl apply -f manifests/hyperai/node-agent-rbac.yaml
 
 .PHONY: hyperai-deploy
 hyperai-deploy: hyperai-load-kind hyperai-setup-rbac
-	@echo "Deploying HyperAI gRPC server..."
+	@echo "Deploying HyperAI with real NVIDIA Triton inference..."
+	@echo "Setting up Triton node agents with DaemonSet..."
+	kubectl apply -f manifests/hyperai/triton-node-agent-daemonset-real.yaml
+	kubectl -n scheduler-plugins rollout status daemonset/hyperai-triton-node-agent --timeout=180s
+	@echo "Deploying central gRPC server..."
 	kubectl apply -f manifests/hyperai/grpc-server.yaml
 	kubectl -n scheduler-plugins rollout status deploy/hyperai-grpc-server --timeout=120s
 	@echo "Deploying HyperAI scheduler..."
 	kubectl apply -f manifests/hyperai/scheduler-config.yaml
 	kubectl apply -f manifests/hyperai/scheduler-deployment.yaml
 	kubectl -n scheduler-plugins rollout status deploy/hyperai-scheduler --timeout=120s
+	@echo "✅ HyperAI deployment completed successfully!"
 
 .PHONY: hyperai-test
 hyperai-test: hyperai-deploy
-	@echo "Running HyperAI test pod..."
-	kubectl apply -f manifests/hyperai/test-pod.yaml
-	kubectl wait --for=condition=Ready pod/hyperai-test-pod --timeout=90s
-	@echo "Test pod deployed successfully!"
-	kubectl get pod hyperai-test-pod -o wide
+	@echo "Testing HyperAI with comprehensive pod specifications..."
+	kubectl apply -f hack/hyperai-grpc/test-triton-final-working.yaml
+	kubectl wait --for=condition=Ready pod/test-triton-final-working --timeout=120s
+	@echo "✅ Test pod deployed successfully!"
+	kubectl get pod test-triton-final-working -o wide
+	@echo "✅ HyperAI test completed!"
 
 .PHONY: hyperai-logs
 hyperai-logs:
-	@echo "Fetching HyperAI scheduler logs..."
-	kubectl -n scheduler-plugins logs deploy/hyperai-scheduler --tail=200 | grep -i "hyperai\|grpc\|score" || true
+	@echo "=== HyperAI Scheduler Logs ==="
+	kubectl -n scheduler-plugins logs deploy/hyperai-scheduler --tail=20 | grep -E "(HyperAI|gRPC|score)" || true
+	@echo ""
+	@echo "=== Central gRPC Server Logs ==="
+	kubectl -n scheduler-plugins logs deploy/hyperai-grpc-server --tail=20 | grep -E "(gRPC|ProcessPodSpec|score)" || true
+	@echo ""
+	@echo "=== Triton Node Agent Logs (sample) ==="
+	kubectl -n scheduler-plugins logs -l app=hyperai-triton-node-agent -c triton-node-agent --tail=20 | head -15 || true
+	@echo ""
+	@echo "=== Triton Server Status ==="
+	kubectl -n scheduler-plugins get pods -l app=hyperai-triton-node-agent
+
+.PHONY: hyperai-status
+hyperai-status:
+	@echo "=== HyperAI Deployment Status ==="
+	kubectl -n scheduler-plugins get deployments
+	kubectl -n scheduler-plugins get daemonsets
+	kubectl -n scheduler-plugins get pods | grep -E "(hyperai|triton)"
 
 .PHONY: hyperai-cleanup
 hyperai-cleanup:
 	@echo "Cleaning up HyperAI resources..."
-	kubectl delete -f manifests/hyperai/test-pod.yaml --ignore-not-found=true
+	kubectl delete pod test-triton-final-working --ignore-not-found=true
 	kubectl delete -f manifests/hyperai/scheduler-deployment.yaml --ignore-not-found=true
 	kubectl delete -f manifests/hyperai/scheduler-config.yaml --ignore-not-found=true
 	kubectl delete -f manifests/hyperai/grpc-server.yaml --ignore-not-found=true
+	kubectl delete -f manifests/hyperai/triton-node-agent-daemonset-real.yaml --ignore-not-found=true
+	@echo "✅ HyperAI cleanup completed!"
 
 .PHONY: hyperai-full-test
-hyperai-full-test: hyperai-cleanup hyperai-start-grpc hyperai-test hyperai-logs hyperai-stop-grpc
+hyperai-full-test: hyperai-cleanup hyperai-test hyperai-logs
 
-# HyperAI Sidecar targets
-.PHONY: hyperai-sidecar-deploy
-hyperai-sidecar-deploy: hyperai-load-kind hyperai-setup-rbac
-	@echo "Deploying HyperAI scheduler with sidecar gRPC server..."
-	kubectl apply -f manifests/hyperai/scheduler-config-sidecar.yaml
-	kubectl apply -f manifests/hyperai/scheduler-deployment-sidecar.yaml
-	kubectl -n scheduler-plugins rollout status deploy/hyperai-scheduler-sidecar --timeout=120s
+.PHONY: hyperai-rebuild-deploy
+hyperai-rebuild-deploy: hyperai-cleanup hyperai-deploy
 
-.PHONY: hyperai-sidecar-test
-hyperai-sidecar-test: hyperai-sidecar-deploy
-	@echo "Running HyperAI sidecar test pod..."
-	kubectl apply -f manifests/hyperai/test-pod-sidecar.yaml
-	kubectl wait --for=condition=Ready pod/hyperai-test-pod-sidecar --timeout=90s
-	@echo "Sidecar test pod deployed successfully!"
-	kubectl get pod hyperai-test-pod-sidecar -o wide
+# Generate ONNX model for Triton
+.PHONY: hyperai-generate-model
+hyperai-generate-model:
+	@echo "Generating ONNX model for Triton inference..."
+	cd hack/hyperai-grpc && python3 generate_scheduler_model.py
+	@echo "✅ ONNX model generated successfully!"
 
-.PHONY: hyperai-sidecar-logs
-hyperai-sidecar-logs:
-	@echo "Fetching HyperAI sidecar scheduler logs..."
-	kubectl -n scheduler-plugins logs deploy/hyperai-scheduler-sidecar -c kube-scheduler --tail=200 | grep -i "hyperai\|grpc\|score" || true
+# Development and debugging targets
+.PHONY: hyperai-debug-pods
+hyperai-debug-pods:
+	@echo "=== Pod Details ==="
+	kubectl -n scheduler-plugins describe pods -l app=hyperai-triton-node-agent | grep -A5 -B5 "Status\|Ready\|Restart"
 
-.PHONY: hyperai-sidecar-cleanup
-hyperai-sidecar-cleanup:
-	@echo "Cleaning up HyperAI sidecar resources..."
-	kubectl delete -f manifests/hyperai/test-pod-sidecar.yaml --ignore-not-found=true
-	kubectl delete -f manifests/hyperai/scheduler-deployment-sidecar.yaml --ignore-not-found=true
-	kubectl delete -f manifests/hyperai/scheduler-config-sidecar.yaml --ignore-not-found=true
+.PHONY: hyperai-debug-events
+hyperai-debug-events:
+	@echo "=== Recent Events ==="
+	kubectl -n scheduler-plugins get events --sort-by='.lastTimestamp' | tail -10
 
-.PHONY: hyperai-sidecar-full-test
-hyperai-sidecar-full-test: hyperai-sidecar-cleanup hyperai-sidecar-test hyperai-sidecar-logs
+.PHONY: hyperai-restart-agents
+hyperai-restart-agents:
+	@echo "Restarting Triton node agents..."
+	kubectl -n scheduler-plugins delete pods -l app=hyperai-triton-node-agent
+	kubectl -n scheduler-plugins rollout status daemonset/hyperai-triton-node-agent --timeout=180s
+	@echo "✅ Node agents restarted!"
 
-# HyperAI DaemonSet targets
-.PHONY: hyperai-node-agent-image
-hyperai-node-agent-image:
-	@echo "Building HyperAI Node Agent image..."
-	cd hack/hyperai-grpc && docker build -f Dockerfile.node-agent -t hyperai-node-agent:latest .
+.PHONY: hyperai-test-connectivity
+hyperai-test-connectivity:
+	@echo "Testing gRPC connectivity..."
+	cd hack/hyperai-grpc && python3 test_client.py
 
-.PHONY: hyperai-daemonset-load-kind
-hyperai-daemonset-load-kind: hyperai-image hyperai-grpc-image hyperai-node-agent-image
-	kind load docker-image $(HYPERAI_IMAGE_NAME):$(HYPERAI_IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
-	kind load docker-image hyperai-grpc-server:latest --name $(KIND_CLUSTER_NAME)
-	kind load docker-image hyperai-node-agent:latest --name $(KIND_CLUSTER_NAME)
-
-.PHONY: hyperai-daemonset-setup-rbac
-hyperai-daemonset-setup-rbac: hyperai-setup-rbac
-	@echo "Setting up RBAC for HyperAI DaemonSet..."
-	kubectl apply -f manifests/hyperai/node-agent-rbac.yaml
-
-.PHONY: hyperai-daemonset-deploy
-hyperai-daemonset-deploy: hyperai-daemonset-load-kind hyperai-daemonset-setup-rbac
-	@echo "Deploying HyperAI DaemonSet architecture..."
-	kubectl apply -f manifests/hyperai/scheduler-config-sidecar.yaml
-	kubectl apply -f manifests/hyperai/scheduler-deployment-sidecar.yaml
-	kubectl -n scheduler-plugins rollout status deploy/hyperai-scheduler-sidecar --timeout=120s
-	@echo "Deploying Node Agent DaemonSet..."
-	kubectl apply -f manifests/hyperai/node-agent-service.yaml
-	kubectl apply -f manifests/hyperai/node-agent-daemonset.yaml
-	kubectl -n scheduler-plugins rollout status daemonset/hyperai-node-agent --timeout=120s
-
-.PHONY: hyperai-daemonset-test
-hyperai-daemonset-test: hyperai-daemonset-deploy
-	@echo "Running HyperAI DaemonSet test pod..."
-	kubectl apply -f manifests/hyperai/test-pod-with-agent.yaml
-	kubectl wait --for=condition=Ready pod/hyperai-test-pod-daemonset --timeout=120s
-	@echo "DaemonSet test pod deployed successfully!"
-	kubectl get pod hyperai-test-pod-daemonset -o wide
-
-.PHONY: hyperai-daemonset-logs
-hyperai-daemonset-logs:
-	@echo "Fetching HyperAI DaemonSet logs..."
-	kubectl -n scheduler-plugins logs deploy/hyperai-scheduler-sidecar -c kube-scheduler --tail=50 | grep -i "hyperai\|grpc\|score" || true
-	@echo "\n--- Node Agent Logs ---"
-	kubectl -n scheduler-plugins logs daemonset/hyperai-node-agent --tail=50 | grep -i "hyperai\|grpc\|score" || true
-
-.PHONY: hyperai-daemonset-cleanup
-hyperai-daemonset-cleanup:
-	@echo "Cleaning up HyperAI DaemonSet resources..."
-	kubectl delete -f manifests/hyperai/test-pod-with-agent.yaml --ignore-not-found=true
-	kubectl delete -f manifests/hyperai/node-agent-daemonset.yaml --ignore-not-found=true
-	kubectl delete -f manifests/hyperai/node-agent-service.yaml --ignore-not-found=true
-	kubectl delete -f manifests/hyperai/node-agent-rbac.yaml --ignore-not-found=true
-	kubectl delete -f manifests/hyperai/scheduler-deployment-sidecar.yaml --ignore-not-found=true
-	kubectl delete -f manifests/hyperai/scheduler-config-sidecar.yaml --ignore-not-found=true
-
-.PHONY: hyperai-daemonset-full-test
-hyperai-daemonset-full-test: hyperai-daemonset-cleanup hyperai-daemonset-test hyperai-daemonset-logs
-
-.PHONY: update-gomod
-update-gomod:
-	hack/update-gomod.sh
-
-.PHONY: unit-test
-unit-test: install-envtest
-	hack/unit-test.sh $(ARGS)
-
-.PHONY: install-envtest
-install-envtest:
-	hack/install-envtest.sh
-
-.PHONY: integration-test
-integration-test: install-envtest
-	$(INTEGTESTENVVAR) hack/integration-test.sh $(ARGS)
-
-.PHONY: verify
-verify:
-	hack/verify-gomod.sh
-	hack/verify-gofmt.sh
-	hack/verify-crdgen.sh
-	hack/verify-structured-logging.sh
-	hack/verify-toc.sh
-
-.PHONY: clean
-clean:
-	rm -rf ./bin
-
+# Convenience targets
 .PHONY: help
 help:
-	@echo "Scheduler Plugins Makefile"
-	@echo ""
 	@echo "Available targets:"
-	@echo "  build               - Build the scheduler binary"
-	@echo "  constantscore-image - Build the ConstantScore Docker image"
-	@echo "  constantscore-load-kind - Load the image into kind cluster"
-	@echo "  constantscore-setup-rbac - Setup namespace and RBAC"
-	@echo "  constantscore-deploy - Deploy ConstantScore to kind cluster"
-	@echo "  constantscore-test  - Run the ConstantScore test pod"
-	@echo "  constantscore-logs  - Show scheduler logs with constant score messages"
-	@echo "  constantscore-cleanup - Clean up ConstantScore resources"
-	@echo "  constantscore-full-test - Run complete test cycle (cleanup, deploy, test, logs)"
-	@echo ""
-	@echo "HyperAI targets:"
-	@echo "  hyperai-proto       - Generate gRPC code for Go and Python"
-	@echo "  hyperai-image       - Build the HyperAI Docker image"
-	@echo "  hyperai-grpc-image  - Build the HyperAI gRPC server image"
-	@echo "  hyperai-load-kind   - Load the image into kind cluster"
-	@echo "  hyperai-start-grpc  - Start the Python gRPC server locally"
-	@echo "  hyperai-stop-grpc   - Stop the Python gRPC server"
-	@echo "  hyperai-test-grpc   - Test gRPC connectivity"
-	@echo "  hyperai-sidecar-deploy - Deploy HyperAI with sidecar gRPC server (recommended)"
-	@echo "  hyperai-sidecar-test - Run HyperAI test pod with sidecar"
-	@echo "  hyperai-sidecar-logs - Show sidecar scheduler logs"
-	@echo "  hyperai-sidecar-cleanup - Clean up sidecar resources"
-	@echo "  hyperai-sidecar-full-test - Run complete sidecar test cycle"
-	@echo "  hyperai-daemonset-deploy - Deploy HyperAI with DaemonSet architecture"
-	@echo "  hyperai-daemonset-test - Run HyperAI test pod with DaemonSet agents"
-	@echo "  hyperai-daemonset-logs - Show DaemonSet logs (scheduler, node agent)"
-	@echo "  hyperai-daemonset-cleanup - Clean up DaemonSet resources"
-	@echo "  hyperai-daemonset-full-test - Run complete DaemonSet test cycle"
-	@echo "  hyperai-deploy      - Deploy HyperAI with separate gRPC service"
-	@echo "  hyperai-test        - Run the HyperAI test pod"
-	@echo "  hyperai-full-test   - Run complete test cycle with separate gRPC service"
-	@echo ""
-	@echo "General targets:"
-	@echo "  clean               - Remove build artifacts"
+	@echo "  build               - Build scheduler binary"
 	@echo "  unit-test           - Run unit tests"
 	@echo "  integration-test    - Run integration tests"
-	@echo "  verify              - Run verification checks"
+	@echo "  verify              - Run all verification checks"
 	@echo ""
-	@echo "Configuration variables:"
-	@echo "  CONSTANTSCORE_IMAGE_NAME - Docker image name (default: constantscore-scheduler)"
-	@echo "  CONSTANTSCORE_IMAGE_TAG  - Docker image tag (default: latest)"
-	@echo "  HYPERAI_IMAGE_NAME       - HyperAI Docker image name (default: hyperai-scheduler)"
-	@echo "  HYPERAI_IMAGE_TAG        - HyperAI Docker image tag (default: latest)"
-	@echo "  KIND_CLUSTER_NAME        - Kind cluster name (default: sched)"
+	@echo "ConstantScore Plugin:"
+	@echo "  constantscore-deploy         - Deploy ConstantScore scheduler"
+	@echo "  constantscore-test           - Test ConstantScore with test pod"
+	@echo "  constantscore-logs           - Show ConstantScore logs"
+	@echo "  constantscore-cleanup        - Clean up ConstantScore resources"
+	@echo "  constantscore-full-test      - Full test cycle (cleanup + test + logs)"
 	@echo ""
-	@echo "Quick Start:"
-	@echo "  make constantscore-full-test     - Test ConstantScore plugin"
-	@echo "  make hyperai-sidecar-full-test   - Test HyperAI plugin (sidecar, recommended)"
-	@echo "  make hyperai-daemonset-full-test - Test HyperAI plugin (DaemonSet architecture)"
+	@echo "HyperAI Production (Real ML Inference):"
+	@echo "  hyperai-deploy               - Deploy HyperAI with Triton inference"
+	@echo "  hyperai-test                 - Test HyperAI with real ML scoring"
+	@echo "  hyperai-logs                 - Show HyperAI component logs"
+	@echo "  hyperai-status               - Show deployment status"
+	@echo "  hyperai-cleanup              - Clean up HyperAI resources"
+	@echo "  hyperai-full-test            - Full test cycle"
+	@echo "  hyperai-generate-model       - Generate ONNX model for Triton"
+	@echo ""
+	@echo "Development and Debugging:"
+	@echo "  hyperai-debug-pods           - Debug pod status"
+	@echo "  hyperai-debug-events         - Show recent events"
+	@echo "  hyperai-restart-agents       - Restart node agents"
+	@echo "  hyperai-test-connectivity    - Test gRPC connectivity"

@@ -1,0 +1,153 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: hyperai-triton-node-agent
+  namespace: scheduler-plugins
+  labels:
+    app: hyperai-triton-node-agent
+spec:
+  selector:
+    matchLabels:
+      app: hyperai-triton-node-agent
+  template:
+    metadata:
+      labels:
+        app: hyperai-triton-node-agent
+    spec:
+      serviceAccountName: hyperai-node-agent
+      initContainers:
+        # Copy model files to shared volume
+        - name: model-loader
+          image: hyperai-triton-node-agent:latest
+          imagePullPolicy: Never
+          command: ["sh", "-c", "cp -r /app/triton_models/* /models/"]
+          volumeMounts:
+            - name: model-repository
+              mountPath: /models
+      containers:
+        # Real NVIDIA Triton Inference Server (sidecar)
+        - name: triton-server
+          image: nvcr.io/nvidia/tritonserver:24.12-py3
+          args:
+            - tritonserver
+            - --model-repository=/models
+            - --http-port=8000
+            - --grpc-port=8001
+            - --metrics-port=8002
+            - --log-verbose=1
+            - --exit-on-error=false
+            - --allow-http=true
+            - --allow-grpc=true
+          ports:
+            - containerPort: 8000
+              name: http
+              protocol: TCP
+            - containerPort: 8001
+              name: grpc
+              protocol: TCP
+            - containerPort: 8002
+              name: metrics
+              protocol: TCP
+          env:
+            - name: CUDA_VISIBLE_DEVICES
+              value: "" # Disable GPU for CPU-only inference
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          volumeMounts:
+            - name: model-repository
+              mountPath: /models
+            - name: shm
+              mountPath: /dev/shm
+          readinessProbe:
+            httpGet:
+              path: /v2/health/ready
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /v2/health/live
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+
+        # Node agent with Triton integration (gRPC)
+        - name: triton-node-agent
+          image: hyperai-triton-node-agent:latest
+          imagePullPolicy: Never
+          command: ["python3", "triton_node_agent.py"]
+          ports:
+            - containerPort: 50051
+              name: grpc
+              protocol: TCP
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: TRITON_URL
+              value: "localhost:8000"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          # Wait for Triton to be ready - use gRPC health check
+          readinessProbe:
+            tcpSocket:
+              port: 50051
+            initialDelaySeconds: 40
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 50051
+            initialDelaySeconds: 50
+            periodSeconds: 20
+          # Volume mounts for accessing host information if needed
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+
+      volumes:
+        - name: model-repository
+          emptyDir: {}
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+
+      tolerations:
+        # Allow running on control plane nodes
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule

@@ -1,0 +1,20 @@
+name: "scheduler_model"
+platform: "onnxruntime_onnx"
+max_batch_size: 8
+input [
+  {
+    name: "features"
+    data_type: TYPE_FP32
+    dims: [ 2 ]
+  }
+]
+output [
+  {
+    name: "score"
+    data_type: TYPE_FP32
+    dims: [ 1 ]
+  }
+]
+
+dynamic_batching {
+}
