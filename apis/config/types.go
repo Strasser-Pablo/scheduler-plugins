@@ -309,3 +309,17 @@ type ConstantScoreArgs struct {
 	// Valid range is 0-100. Default is 50.
 	Score int64 `json:"score,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// HyperAIArgs holds arguments used to configure the HyperAI plugin.
+type HyperAIArgs struct {
+	metav1.TypeMeta
+
+	// gRPC server address for Python scoring service.
+	GRPCAddress string `json:"grpcAddress,omitempty"`
+
+	// Score is the constant score value to return for all nodes (for initial version).
+	// Valid range is 0-100. Default is 42.
+	Score int64 `json:"score,omitempty"`
+}

@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyperai-grpc-server
+  namespace: scheduler-plugins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hyperai-grpc-server
+  template:
+    metadata:
+      labels:
+        app: hyperai-grpc-server
+    spec:
+      containers:
+        - name: grpc-server
+          image: hyperai-grpc-server:latest
+          imagePullPolicy: Never # For local kind testing
+          ports:
+            - containerPort: 50051
+              name: grpc
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hyperai-grpc-service
+  namespace: scheduler-plugins
+spec:
+  selector:
+    app: hyperai-grpc-server
+  ports:
+    - port: 50051
+      targetPort: 50051
+      protocol: TCP
+      name: grpc
+  type: ClusterIP

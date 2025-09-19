@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package hyperai;
+
+option go_package = "sigs.k8s.io/scheduler-plugins/pkg/hyperai";
+
+service HyperAI {
+  rpc GetScore (ScoreRequest) returns (ScoreReply) {}
+}
+
+message ScoreRequest {
+  string pod_name = 1;
+  string node_name = 2;
+}
+
+message ScoreReply {
+  int64 score = 1;
+}

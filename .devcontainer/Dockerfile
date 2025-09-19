@@ -7,14 +7,17 @@ FROM mcr.microsoft.com/devcontainers/go:${GO_VERSION}
 
 USER root
 
-# Base deps
 RUN apt-get update && \
   apt-get install -y --no-install-recommends \
   sudo \ 
   ca-certificates curl git make bash-completion jq iptables iproute2 \
   gnupg lsb-release unzip tar build-essential \
-  uidmap socat conntrack ebtables ethtool && \
-  rm -rf /var/lib/apt/lists/*
+  uidmap socat conntrack ebtables ethtool \
+  python3 python3-pip python3-venv python3-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install Python gRPC tools globally for dev convenience
+RUN python3 -m pip install --break-system-packages grpcio grpcio-tools
 RUN echo "vscode ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-vscode && \
   chmod 0440 /etc/sudoers.d/90-vscode
 

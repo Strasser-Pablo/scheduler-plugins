@@ -37,6 +37,63 @@ This repository has been configured with a specialized `Makefile` focused on bui
 - **clean**: Cleans build artifacts.
 - **help**: Shows all available targets and configuration options.
 
+## HyperAI Plugin Makefile
+
+The repository also includes full support for the **HyperAI** plugin, which connects to a Python gRPC server for advanced node scoring. The plugin supports both standalone service and sidecar deployment architectures.
+
+### HyperAI Architecture Options
+
+**Sidecar Deployment (Recommended)**: Scheduler and gRPC server run in the same pod for minimal latency
+**Service Deployment**: gRPC server runs as separate service for independent scaling
+
+### HyperAI Targets
+
+- **hyperai-proto**: Generates gRPC code for both Go and Python.
+- **hyperai-image**: Builds the HyperAI Docker image.
+- **hyperai-load-kind**: Loads the image into a kind cluster.
+- **hyperai-sidecar-deploy**: Deploys HyperAI scheduler with sidecar gRPC server (recommended).
+- **hyperai-sidecar-test**: Runs test pod with sidecar scheduler.
+- **hyperai-sidecar-full-test**: Complete sidecar test cycle.
+- **hyperai-deploy**: Deploys HyperAI scheduler with separate gRPC service.
+- **hyperai-test**: Runs the HyperAI test pod.
+- **hyperai-full-test**: Complete test cycle with separate gRPC service.
+- **hyperai-start-grpc**: Starts the Python gRPC server locally.
+- **hyperai-stop-grpc**: Stops the Python gRPC server.
+- **hyperai-test-grpc**: Tests gRPC connectivity.
+
+### HyperAI Quick Start (Sidecar)
+
+The `hyperai-sidecar-full-test` target is the recommended way to build, deploy, and validate the HyperAI plugin with sidecar architecture:
+
+```bash
+make hyperai-sidecar-full-test
+```
+
+This performs:
+1. Builds scheduler binary with HyperAI plugin
+2. Builds and loads Docker images (scheduler + gRPC server) into kind cluster
+3. Deploys HyperAI scheduler with sidecar gRPC server
+4. Runs test pod to validate gRPC scoring (score=88 vs fallback=42)
+5. Shows logs confirming gRPC communication
+
+### HyperAI Development
+
+```bash
+# Generate gRPC code
+make hyperai-proto
+
+# Test gRPC connectivity locally
+make hyperai-start-grpc
+make hyperai-test-grpc  # Should return score=88
+make hyperai-stop-grpc
+
+# Deploy and test sidecar (recommended)
+make hyperai-sidecar-full-test
+
+# Deploy and test separate service
+make hyperai-full-test
+```
+
 ### ConstantScore Quick Start
 
 The `constantscore-full-test` target is the recommended way to build, deploy, and validate the ConstantScore plugin in a local kind cluster. It performs the following steps:
@@ -130,6 +187,7 @@ environments.
 * [Cross Node Preemption](pkg/crossnodepreemption/README.md)
 * [Pod State](pkg/podstate/README.md)
 * [Quality of Service](pkg/qos/README.md)
+* [HyperAI](pkg/hyperai/README.md)
 
 ## Compatibility Matrix
 

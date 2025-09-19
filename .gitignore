@@ -7,6 +7,10 @@ bin
 testbin/*
 hack/tools/bin/*
 
+# Python compiled files
+*.pyc
+__pycache__/
+
 # macOS
 .DS_Store
 

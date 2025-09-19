@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyperai-scheduler
+  namespace: scheduler-plugins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hyperai-scheduler
+  template:
+    metadata:
+      labels:
+        app: hyperai-scheduler
+    spec:
+      serviceAccountName: scheduler-plugins-scheduler
+      containers:
+        - name: kube-scheduler
+          image: hyperai-scheduler:latest
+          imagePullPolicy: Never # For local kind testing
+          command:
+            - /kube-scheduler
+            - --config=/etc/kubernetes/scheduler-config.yaml
+            - --v=2
+          volumeMounts:
+            - name: config
+              mountPath: /etc/kubernetes
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: hyperai-scheduler-config

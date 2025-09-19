@@ -46,6 +46,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&SySchedArgs{},
 		&PeaksArgs{},
 		&ConstantScoreArgs{},
+		&HyperAIArgs{},
 	)
 	return nil
 }
