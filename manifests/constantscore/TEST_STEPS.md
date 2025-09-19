@@ -1,6 +1,24 @@
 # Test ConstantScore on kind
 
-This script builds the scheduler with `ConstantScore`, builds the container image, loads it into an existing kind cluster named `sched`, deploys the scheduler and a sample pod, then tails logs.
+## Automated Testing with Makefile (Recommended)
+
+The functionality described in this script has been integrated into the root Makefile. You can now use:
+
+```bash
+# Complete test cycle
+make constantscore-full-test
+
+# Or individual steps
+make constantscore-deploy
+make constantscore-test
+make constantscore-logs
+```
+
+See the root `Makefile` and `README.md` for full documentation of available targets.
+
+## Manual Testing Script (Legacy)
+
+This script manually builds the scheduler with `ConstantScore`, builds the container image, loads it into an existing kind cluster named `sched`, deploys the scheduler and a sample pod, then tails logs.
 
 Requirements:
 - `kind` cluster named `sched` already exists

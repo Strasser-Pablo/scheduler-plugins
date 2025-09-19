@@ -19,49 +19,77 @@ docker pull registry.k8s.io/scheduler-plugins/kube-scheduler:$TAG
 docker pull registry.k8s.io/scheduler-plugins/controller:$TAG
 ```
 
-## Makefile Usage and Automation
+## ConstantScore Plugin Makefile
 
-This repository provides a comprehensive `Makefile` to automate building, testing, and deploying scheduler-plugins, including local development and Kubernetes-in-Kind workflows.
+This repository has been configured with a specialized `Makefile` focused on building, testing, and deploying the **ConstantScore** scheduler plugin, including automated workflows for local development with Kubernetes-in-Kind.
 
 ### Key Targets
 
-- **build**: Builds both the controller and scheduler binaries.
-- **build-images**: Builds Docker images for the scheduler and controller.
-- **local-image**: Builds images for the local architecture and loads them for local testing.
+- **build**: Builds the scheduler binary with ConstantScore plugin.
+- **constantscore-image**: Builds the ConstantScore Docker image.
+- **constantscore-load-kind**: Loads the image into a kind cluster.
+- **constantscore-deploy**: Deploys ConstantScore scheduler to kind cluster.
+- **constantscore-test**: Runs the ConstantScore test pod.
+- **constantscore-full-test**: Complete test cycle (cleanup, deploy, test, logs).
 - **unit-test**: Runs unit tests.
 - **integration-test**: Runs integration tests.
 - **verify**: Runs all verification scripts (formatting, codegen, etc).
 - **clean**: Cleans build artifacts.
-- **kind-deploy-test**: Fully automates the build, image load, CRD install, deployment, and test pod scheduling in a local [kind](https://kind.sigs.k8s.io/) cluster.
+- **help**: Shows all available targets and configuration options.
 
-### Automated Kind Deployment & Test
+### ConstantScore Quick Start
 
-The `kind-deploy-test` target is the recommended way to build, deploy, and validate the scheduler-plugins in a local kind cluster. It performs the following steps:
+The `constantscore-full-test` target is the recommended way to build, deploy, and validate the ConstantScore plugin in a local kind cluster. It performs the following steps:
 
-1. Builds scheduler and controller images for your local architecture.
-2. Loads these images into the kind cluster named `sched`.
-3. Installs all required CRDs.
-4. Deploys all scheduler-plugins manifests (RBAC, ConfigMap, Deployment, etc).
-5. Deploys a test pod that uses the custom scheduler.
-6. Waits for the test pod to become ready and prints its status.
+1. Cleans up any existing ConstantScore deployments.
+2. Builds the scheduler binary with ConstantScore plugin.
+3. Builds and loads the Docker image into the kind cluster.
+4. Sets up necessary RBAC and namespace.
+5. Deploys the ConstantScore scheduler.
+6. Runs a test pod to validate scheduling.
+7. Shows logs with constant score messages.
 
 #### Usage Example
 
 ```sh
-make kind-deploy-test
+# Quick test - runs the complete cycle
+make constantscore-full-test
+
+# Or step by step
+make build
+make constantscore-image
+make constantscore-deploy
+make constantscore-test
+make constantscore-logs
+```
+
+#### Configuration Variables
+
+You can customize the behavior by setting these variables:
+
+```sh
+# Custom image name and tag
+make constantscore-full-test CONSTANTSCORE_IMAGE_NAME=my-scheduler CONSTANTSCORE_IMAGE_TAG=v1.0.0
+
+# Different kind cluster name
+make constantscore-full-test KIND_CLUSTER_NAME=my-cluster
 ```
 
 **Requirements:**
-- Docker (with buildx support)
-- [kind](https://kind.sigs.k8s.io/) cluster named `sched` running
+- Docker
+- [kind](https://kind.sigs.k8s.io/) cluster named `sched` running (or customize with KIND_CLUSTER_NAME)
 - kubectl configured to access the kind cluster
 
 **What happens:**
-- Images are built and loaded into kind
-- All manifests and CRDs are applied
-- A test pod is scheduled and its status is shown
+- The scheduler binary is built with ConstantScore plugin
+- Docker image is built using Dockerfile.constantscore
+- Image is loaded into the kind cluster
+- Namespace and RBAC are configured
+- ConstantScore scheduler is deployed
+- Test pod is scheduled using the ConstantScore scheduler
+- Logs are displayed showing constant score scheduling decisions
 
-If the test pod is `Running` and `Ready`, the deployment is successful.
+If the test pod is `Running` and `Ready`, and you see "Returning constant score" messages in the logs, the deployment is successful.
 
 #### Proxy Configuration
 
@@ -74,7 +102,8 @@ go env -w GOPROXY=https://proxy.golang.org,direct
 
 ### For LLMs and Automation
 
-- Always use the `kind-deploy-test` target for end-to-end local validation.
+- Always use the `constantscore-full-test` target for end-to-end local validation of the ConstantScore plugin.
+- Use `make help` to see all available targets and configuration options.
 - Ensure all prerequisites (Docker, kind, kubectl) are met.
 - The Makefile is self-documenting; inspect it for more targets and details.
 

@@ -34,7 +34,29 @@ All other plugins are explicitly disabled, including:
 - All other score plugins (NodeResourcesFit, ImageLocality, etc.)
 - PreFilter, PostFilter, Reserve, Permit, PreBind, PostBind plugins
 
-## Usage
+## Quick Start with Makefile
+
+The easiest way to test the ConstantScore plugin is using the provided Makefile targets:
+
+```bash
+# Complete test cycle (recommended)
+make constantscore-full-test
+
+# Or step by step:
+make build                    # Build scheduler binary
+make constantscore-image      # Build Docker image
+make constantscore-deploy     # Deploy to kind cluster
+make constantscore-test       # Run test pod
+make constantscore-logs       # View scheduler logs
+make constantscore-cleanup    # Clean up resources
+```
+
+### Requirements for Makefile approach:
+- Docker
+- kind cluster named `sched` (or customize with KIND_CLUSTER_NAME variable)
+- kubectl configured to access the cluster
+
+## Manual Usage
 
 ### Deploy the scheduler
 
