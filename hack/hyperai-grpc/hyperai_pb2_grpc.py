@@ -26,7 +26,8 @@ if _version_not_supported:
 
 
 class HyperAIStub(object):
-    """Missing associated documentation comment in .proto file."""
+    """Central HyperAI service (runs as sidecar with scheduler)
+    """
 
     def __init__(self, channel):
         """Constructor.
@@ -42,7 +43,8 @@ class HyperAIStub(object):
 
 
 class HyperAIServicer(object):
-    """Missing associated documentation comment in .proto file."""
+    """Central HyperAI service (runs as sidecar with scheduler)
+    """
 
     def GetScore(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -67,7 +69,8 @@ def add_HyperAIServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class HyperAI(object):
-    """Missing associated documentation comment in .proto file."""
+    """Central HyperAI service (runs as sidecar with scheduler)
+    """
 
     @staticmethod
     def GetScore(request,
@@ -86,6 +89,81 @@ class HyperAI(object):
             '/hyperai.HyperAI/GetScore',
             hyperai__pb2.ScoreRequest.SerializeToString,
             hyperai__pb2.ScoreReply.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class NodeAgentStub(object):
+    """Node Agent service (runs as daemonset on each node)
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.ProcessPodSpec = channel.unary_unary(
+                '/hyperai.NodeAgent/ProcessPodSpec',
+                request_serializer=hyperai__pb2.PodSpecRequest.SerializeToString,
+                response_deserializer=hyperai__pb2.PodSpecReply.FromString,
+                _registered_method=True)
+
+
+class NodeAgentServicer(object):
+    """Node Agent service (runs as daemonset on each node)
+    """
+
+    def ProcessPodSpec(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_NodeAgentServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'ProcessPodSpec': grpc.unary_unary_rpc_method_handler(
+                    servicer.ProcessPodSpec,
+                    request_deserializer=hyperai__pb2.PodSpecRequest.FromString,
+                    response_serializer=hyperai__pb2.PodSpecReply.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'hyperai.NodeAgent', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('hyperai.NodeAgent', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class NodeAgent(object):
+    """Node Agent service (runs as daemonset on each node)
+    """
+
+    @staticmethod
+    def ProcessPodSpec(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/hyperai.NodeAgent/ProcessPodSpec',
+            hyperai__pb2.PodSpecRequest.SerializeToString,
+            hyperai__pb2.PodSpecReply.FromString,
             options,
             channel_credentials,
             insecure,

@@ -4,11 +4,17 @@ package hyperai;
 
 option go_package = "sigs.k8s.io/scheduler-plugins/pkg/hyperai";
 
+// Central HyperAI service (runs as sidecar with scheduler)
 service HyperAI {
   rpc GetScore (ScoreRequest) returns (ScoreReply) {}
 }
 
+// Node Agent service (runs as daemonset on each node)
+service NodeAgent {
+  rpc ProcessPodSpec (PodSpecRequest) returns (PodSpecReply) {}
+}
 
+// Original scheduler -> central server request
 message ScoreRequest {
   string pod_json = 1;
   string node_json = 2;
@@ -16,4 +22,18 @@ message ScoreRequest {
 
 message ScoreReply {
   int64 score = 1;
+}
+
+// Central server -> node agent request
+message PodSpecRequest {
+  string pod_json = 1;
+  string node_json = 2;
+  string target_pod_name = 3;
+  string target_pod_namespace = 4;
+}
+
+message PodSpecReply {
+  int64 score = 1;
+  string message = 2;
+  bool success = 3;
 }

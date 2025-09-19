@@ -40,14 +40,15 @@ This repository has been configured with a specialized `Makefile` focused on bui
 ## HyperAI Plugin Makefile
 
 
-The repository also includes full support for the **HyperAI** plugin, which connects to a Python gRPC server for advanced node scoring. The plugin supports both standalone service and sidecar deployment architectures.
+The repository also includes full support for the **HyperAI** plugin, which connects to a Python gRPC server for advanced node scoring. The plugin supports multiple deployment architectures including sidecar, service, and **DaemonSet** deployments.
 
 **Protocol Note:**
-The HyperAI plugin now sends the full Pod and Node specs as JSON strings in the gRPC request, not just names. See `pkg/hyperai/README.md` for details and proto example.
+The HyperAI plugin sends the full Pod and Node specs as JSON strings in the gRPC request, not just names. See `pkg/hyperai/README.md` for details and proto example.
 
 ### HyperAI Architecture Options
 
-**Sidecar Deployment (Recommended)**: Scheduler and gRPC server run in the same pod for minimal latency
+**DaemonSet Deployment (Recommended for Production)**: Node agents run on every node via DaemonSet for distributed, node-specific scoring
+**Sidecar Deployment**: Scheduler and gRPC server run in the same pod for minimal latency
 **Service Deployment**: gRPC server runs as separate service for independent scaling
 
 ### HyperAI Targets
@@ -55,7 +56,10 @@ The HyperAI plugin now sends the full Pod and Node specs as JSON strings in the 
 - **hyperai-proto**: Generates gRPC code for both Go and Python.
 - **hyperai-image**: Builds the HyperAI Docker image.
 - **hyperai-load-kind**: Loads the image into a kind cluster.
-- **hyperai-sidecar-deploy**: Deploys HyperAI scheduler with sidecar gRPC server (recommended).
+- **hyperai-daemonset-deploy**: Deploys HyperAI scheduler with DaemonSet node agents (recommended for production).
+- **hyperai-daemonset-test**: Runs test pod with DaemonSet architecture.
+- **hyperai-daemonset-full-test**: Complete DaemonSet test cycle.
+- **hyperai-sidecar-deploy**: Deploys HyperAI scheduler with sidecar gRPC server.
 - **hyperai-sidecar-test**: Runs test pod with sidecar scheduler.
 - **hyperai-sidecar-full-test**: Complete sidecar test cycle.
 - **hyperai-deploy**: Deploys HyperAI scheduler with separate gRPC service.
@@ -65,20 +69,29 @@ The HyperAI plugin now sends the full Pod and Node specs as JSON strings in the 
 - **hyperai-stop-grpc**: Stops the Python gRPC server.
 - **hyperai-test-grpc**: Tests gRPC connectivity.
 
-### HyperAI Quick Start (Sidecar)
+### HyperAI Quick Start (DaemonSet - Production)
 
-The `hyperai-sidecar-full-test` target is the recommended way to build, deploy, and validate the HyperAI plugin with sidecar architecture:
+The `hyperai-daemonset-full-test` target is the recommended way to build, deploy, and validate the HyperAI plugin with DaemonSet architecture for production-like deployments:
 
 ```bash
-make hyperai-sidecar-full-test
+make hyperai-daemonset-full-test
 ```
 
 This performs:
 1. Builds scheduler binary with HyperAI plugin
-2. Builds and loads Docker images (scheduler + gRPC server) into kind cluster
+2. Builds and loads Docker images (scheduler + gRPC server + node agents) into kind cluster
 3. Deploys HyperAI scheduler with sidecar gRPC server
-4. Runs test pod to validate gRPC scoring (score=88 vs fallback=42)
-5. Shows logs confirming gRPC communication
+4. Deploys node agent DaemonSet on all nodes
+5. Runs test pod to validate distributed node-specific scoring
+6. Shows logs confirming node-specific gRPC routing and scoring
+
+### HyperAI Quick Start (Sidecar - Development)
+
+The `hyperai-sidecar-full-test` target provides a simpler development setup:
+
+```bash
+make hyperai-sidecar-full-test
+```
 
 ### HyperAI Development
 
@@ -91,7 +104,10 @@ make hyperai-start-grpc
 make hyperai-test-grpc  # Should return score=88
 make hyperai-stop-grpc
 
-# Deploy and test sidecar (recommended)
+# Deploy and test DaemonSet (recommended for production)
+make hyperai-daemonset-full-test
+
+# Deploy and test sidecar (recommended for development)
 make hyperai-sidecar-full-test
 
 # Deploy and test separate service

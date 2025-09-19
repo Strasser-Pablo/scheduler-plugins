@@ -21,10 +21,11 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Original scheduler -> central server request
 type ScoreRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PodName       string                 `protobuf:"bytes,1,opt,name=pod_name,json=podName,proto3" json:"pod_name,omitempty"`
-	NodeName      string                 `protobuf:"bytes,2,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
+	PodJson       string                 `protobuf:"bytes,1,opt,name=pod_json,json=podJson,proto3" json:"pod_json,omitempty"`
+	NodeJson      string                 `protobuf:"bytes,2,opt,name=node_json,json=nodeJson,proto3" json:"node_json,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -59,16 +60,16 @@ func (*ScoreRequest) Descriptor() ([]byte, []int) {
 	return file_hyperai_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ScoreRequest) GetPodName() string {
+func (x *ScoreRequest) GetPodJson() string {
 	if x != nil {
-		return x.PodName
+		return x.PodJson
 	}
 	return ""
 }
 
-func (x *ScoreRequest) GetNodeName() string {
+func (x *ScoreRequest) GetNodeJson() string {
 	if x != nil {
-		return x.NodeName
+		return x.NodeJson
 	}
 	return ""
 }
@@ -117,19 +118,159 @@ func (x *ScoreReply) GetScore() int64 {
 	return 0
 }
 
+// Central server -> node agent request
+type PodSpecRequest struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	PodJson            string                 `protobuf:"bytes,1,opt,name=pod_json,json=podJson,proto3" json:"pod_json,omitempty"`
+	NodeJson           string                 `protobuf:"bytes,2,opt,name=node_json,json=nodeJson,proto3" json:"node_json,omitempty"`
+	TargetPodName      string                 `protobuf:"bytes,3,opt,name=target_pod_name,json=targetPodName,proto3" json:"target_pod_name,omitempty"`
+	TargetPodNamespace string                 `protobuf:"bytes,4,opt,name=target_pod_namespace,json=targetPodNamespace,proto3" json:"target_pod_namespace,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *PodSpecRequest) Reset() {
+	*x = PodSpecRequest{}
+	mi := &file_hyperai_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PodSpecRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PodSpecRequest) ProtoMessage() {}
+
+func (x *PodSpecRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hyperai_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PodSpecRequest.ProtoReflect.Descriptor instead.
+func (*PodSpecRequest) Descriptor() ([]byte, []int) {
+	return file_hyperai_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PodSpecRequest) GetPodJson() string {
+	if x != nil {
+		return x.PodJson
+	}
+	return ""
+}
+
+func (x *PodSpecRequest) GetNodeJson() string {
+	if x != nil {
+		return x.NodeJson
+	}
+	return ""
+}
+
+func (x *PodSpecRequest) GetTargetPodName() string {
+	if x != nil {
+		return x.TargetPodName
+	}
+	return ""
+}
+
+func (x *PodSpecRequest) GetTargetPodNamespace() string {
+	if x != nil {
+		return x.TargetPodNamespace
+	}
+	return ""
+}
+
+type PodSpecReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Score         int64                  `protobuf:"varint,1,opt,name=score,proto3" json:"score,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Success       bool                   `protobuf:"varint,3,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PodSpecReply) Reset() {
+	*x = PodSpecReply{}
+	mi := &file_hyperai_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PodSpecReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PodSpecReply) ProtoMessage() {}
+
+func (x *PodSpecReply) ProtoReflect() protoreflect.Message {
+	mi := &file_hyperai_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PodSpecReply.ProtoReflect.Descriptor instead.
+func (*PodSpecReply) Descriptor() ([]byte, []int) {
+	return file_hyperai_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *PodSpecReply) GetScore() int64 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
+}
+
+func (x *PodSpecReply) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *PodSpecReply) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 var File_hyperai_proto protoreflect.FileDescriptor
 
 const file_hyperai_proto_rawDesc = "" +
 	"\n" +
 	"\rhyperai.proto\x12\ahyperai\"F\n" +
 	"\fScoreRequest\x12\x19\n" +
-	"\bpod_name\x18\x01 \x01(\tR\apodName\x12\x1b\n" +
-	"\tnode_name\x18\x02 \x01(\tR\bnodeName\"\"\n" +
+	"\bpod_json\x18\x01 \x01(\tR\apodJson\x12\x1b\n" +
+	"\tnode_json\x18\x02 \x01(\tR\bnodeJson\"\"\n" +
 	"\n" +
 	"ScoreReply\x12\x14\n" +
-	"\x05score\x18\x01 \x01(\x03R\x05score2C\n" +
+	"\x05score\x18\x01 \x01(\x03R\x05score\"\xa2\x01\n" +
+	"\x0ePodSpecRequest\x12\x19\n" +
+	"\bpod_json\x18\x01 \x01(\tR\apodJson\x12\x1b\n" +
+	"\tnode_json\x18\x02 \x01(\tR\bnodeJson\x12&\n" +
+	"\x0ftarget_pod_name\x18\x03 \x01(\tR\rtargetPodName\x120\n" +
+	"\x14target_pod_namespace\x18\x04 \x01(\tR\x12targetPodNamespace\"X\n" +
+	"\fPodSpecReply\x12\x14\n" +
+	"\x05score\x18\x01 \x01(\x03R\x05score\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x18\n" +
+	"\asuccess\x18\x03 \x01(\bR\asuccess2C\n" +
 	"\aHyperAI\x128\n" +
-	"\bGetScore\x12\x15.hyperai.ScoreRequest\x1a\x13.hyperai.ScoreReply\"\x00B+Z)sigs.k8s.io/scheduler-plugins/pkg/hyperaib\x06proto3"
+	"\bGetScore\x12\x15.hyperai.ScoreRequest\x1a\x13.hyperai.ScoreReply\"\x002O\n" +
+	"\tNodeAgent\x12B\n" +
+	"\x0eProcessPodSpec\x12\x17.hyperai.PodSpecRequest\x1a\x15.hyperai.PodSpecReply\"\x00B+Z)sigs.k8s.io/scheduler-plugins/pkg/hyperaib\x06proto3"
 
 var (
 	file_hyperai_proto_rawDescOnce sync.Once
@@ -143,16 +284,20 @@ func file_hyperai_proto_rawDescGZIP() []byte {
 	return file_hyperai_proto_rawDescData
 }
 
-var file_hyperai_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_hyperai_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_hyperai_proto_goTypes = []any{
-	(*ScoreRequest)(nil), // 0: hyperai.ScoreRequest
-	(*ScoreReply)(nil),   // 1: hyperai.ScoreReply
+	(*ScoreRequest)(nil),   // 0: hyperai.ScoreRequest
+	(*ScoreReply)(nil),     // 1: hyperai.ScoreReply
+	(*PodSpecRequest)(nil), // 2: hyperai.PodSpecRequest
+	(*PodSpecReply)(nil),   // 3: hyperai.PodSpecReply
 }
 var file_hyperai_proto_depIdxs = []int32{
 	0, // 0: hyperai.HyperAI.GetScore:input_type -> hyperai.ScoreRequest
-	1, // 1: hyperai.HyperAI.GetScore:output_type -> hyperai.ScoreReply
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	2, // 1: hyperai.NodeAgent.ProcessPodSpec:input_type -> hyperai.PodSpecRequest
+	1, // 2: hyperai.HyperAI.GetScore:output_type -> hyperai.ScoreReply
+	3, // 3: hyperai.NodeAgent.ProcessPodSpec:output_type -> hyperai.PodSpecReply
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -169,9 +314,9 @@ func file_hyperai_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hyperai_proto_rawDesc), len(file_hyperai_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_hyperai_proto_goTypes,
 		DependencyIndexes: file_hyperai_proto_depIdxs,

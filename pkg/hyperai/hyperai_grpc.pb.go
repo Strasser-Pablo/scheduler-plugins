@@ -25,6 +25,8 @@ const (
 // HyperAIClient is the client API for HyperAI service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// Central HyperAI service (runs as sidecar with scheduler)
 type HyperAIClient interface {
 	GetScore(ctx context.Context, in *ScoreRequest, opts ...grpc.CallOption) (*ScoreReply, error)
 }
@@ -50,6 +52,8 @@ func (c *hyperAIClient) GetScore(ctx context.Context, in *ScoreRequest, opts ...
 // HyperAIServer is the server API for HyperAI service.
 // All implementations must embed UnimplementedHyperAIServer
 // for forward compatibility.
+//
+// Central HyperAI service (runs as sidecar with scheduler)
 type HyperAIServer interface {
 	GetScore(context.Context, *ScoreRequest) (*ScoreReply, error)
 	mustEmbedUnimplementedHyperAIServer()
@@ -114,6 +118,112 @@ var HyperAI_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetScore",
 			Handler:    _HyperAI_GetScore_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "hyperai.proto",
+}
+
+const (
+	NodeAgent_ProcessPodSpec_FullMethodName = "/hyperai.NodeAgent/ProcessPodSpec"
+)
+
+// NodeAgentClient is the client API for NodeAgent service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// Node Agent service (runs as daemonset on each node)
+type NodeAgentClient interface {
+	ProcessPodSpec(ctx context.Context, in *PodSpecRequest, opts ...grpc.CallOption) (*PodSpecReply, error)
+}
+
+type nodeAgentClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewNodeAgentClient(cc grpc.ClientConnInterface) NodeAgentClient {
+	return &nodeAgentClient{cc}
+}
+
+func (c *nodeAgentClient) ProcessPodSpec(ctx context.Context, in *PodSpecRequest, opts ...grpc.CallOption) (*PodSpecReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PodSpecReply)
+	err := c.cc.Invoke(ctx, NodeAgent_ProcessPodSpec_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// NodeAgentServer is the server API for NodeAgent service.
+// All implementations must embed UnimplementedNodeAgentServer
+// for forward compatibility.
+//
+// Node Agent service (runs as daemonset on each node)
+type NodeAgentServer interface {
+	ProcessPodSpec(context.Context, *PodSpecRequest) (*PodSpecReply, error)
+	mustEmbedUnimplementedNodeAgentServer()
+}
+
+// UnimplementedNodeAgentServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedNodeAgentServer struct{}
+
+func (UnimplementedNodeAgentServer) ProcessPodSpec(context.Context, *PodSpecRequest) (*PodSpecReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProcessPodSpec not implemented")
+}
+func (UnimplementedNodeAgentServer) mustEmbedUnimplementedNodeAgentServer() {}
+func (UnimplementedNodeAgentServer) testEmbeddedByValue()                   {}
+
+// UnsafeNodeAgentServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to NodeAgentServer will
+// result in compilation errors.
+type UnsafeNodeAgentServer interface {
+	mustEmbedUnimplementedNodeAgentServer()
+}
+
+func RegisterNodeAgentServer(s grpc.ServiceRegistrar, srv NodeAgentServer) {
+	// If the following call pancis, it indicates UnimplementedNodeAgentServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&NodeAgent_ServiceDesc, srv)
+}
+
+func _NodeAgent_ProcessPodSpec_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PodSpecRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeAgentServer).ProcessPodSpec(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NodeAgent_ProcessPodSpec_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeAgentServer).ProcessPodSpec(ctx, req.(*PodSpecRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// NodeAgent_ServiceDesc is the grpc.ServiceDesc for NodeAgent service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var NodeAgent_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "hyperai.NodeAgent",
+	HandlerType: (*NodeAgentServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ProcessPodSpec",
+			Handler:    _NodeAgent_ProcessPodSpec_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rhyperai.proto\x12\x07hyperai\"3\n\x0cScoreRequest\x12\x10\n\x08pod_json\x18\x01 \x01(\t\x12\x11\n\tnode_json\x18\x02 \x01(\t\"\x1b\n\nScoreReply\x12\r\n\x05score\x18\x01 \x01(\x03\x32\x43\n\x07HyperAI\x12\x38\n\x08GetScore\x12\x15.hyperai.ScoreRequest\x1a\x13.hyperai.ScoreReply\"\x00\x42+Z)sigs.k8s.io/scheduler-plugins/pkg/hyperaib\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rhyperai.proto\x12\x07hyperai\"3\n\x0cScoreRequest\x12\x10\n\x08pod_json\x18\x01 \x01(\t\x12\x11\n\tnode_json\x18\x02 \x01(\t\"\x1b\n\nScoreReply\x12\r\n\x05score\x18\x01 \x01(\x03\"l\n\x0ePodSpecRequest\x12\x10\n\x08pod_json\x18\x01 \x01(\t\x12\x11\n\tnode_json\x18\x02 \x01(\t\x12\x17\n\x0ftarget_pod_name\x18\x03 \x01(\t\x12\x1c\n\x14target_pod_namespace\x18\x04 \x01(\t\"?\n\x0cPodSpecReply\x12\r\n\x05score\x18\x01 \x01(\x03\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x0f\n\x07success\x18\x03 \x01(\x08\x32\x43\n\x07HyperAI\x12\x38\n\x08GetScore\x12\x15.hyperai.ScoreRequest\x1a\x13.hyperai.ScoreReply\"\x00\x32O\n\tNodeAgent\x12\x42\n\x0eProcessPodSpec\x12\x17.hyperai.PodSpecRequest\x1a\x15.hyperai.PodSpecReply\"\x00\x42+Z)sigs.k8s.io/scheduler-plugins/pkg/hyperaib\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -36,6 +36,12 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_SCOREREQUEST']._serialized_end=77
   _globals['_SCOREREPLY']._serialized_start=79
   _globals['_SCOREREPLY']._serialized_end=106
-  _globals['_HYPERAI']._serialized_start=108
-  _globals['_HYPERAI']._serialized_end=175
+  _globals['_PODSPECREQUEST']._serialized_start=108
+  _globals['_PODSPECREQUEST']._serialized_end=216
+  _globals['_PODSPECREPLY']._serialized_start=218
+  _globals['_PODSPECREPLY']._serialized_end=281
+  _globals['_HYPERAI']._serialized_start=283
+  _globals['_HYPERAI']._serialized_end=350
+  _globals['_NODEAGENT']._serialized_start=352
+  _globals['_NODEAGENT']._serialized_end=431
 # @@protoc_insertion_point(module_scope)

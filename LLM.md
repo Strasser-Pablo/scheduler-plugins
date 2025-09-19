@@ -29,14 +29,17 @@ This repository (`scheduler-plugins`) contains out-of-tree scheduler plugins for
 12. **Use appropriate timeouts** for gRPC calls (5s recommended)
 13. **Log success/failure clearly** with different log levels
 14. **Choose architecture wisely**:
-    - **Sidecar**: For high-throughput, low-latency requirements
+    - **DaemonSet**: For node-specific inference and production deployments
+    - **Sidecar**: For high-throughput, low-latency requirements in development
     - **Service**: For shared gRPC servers across multiple schedulers
-15. **Validate gRPC responses** before using scores
-16. **Handle connection pooling** for performance in high-load scenarios
-17. **Secure gRPC communication** in production (TLS, authentication)
-18. **Monitor gRPC server health** with readiness/liveness probes
-19. **Version your Protocol Buffers** for backward compatibility
-20. **Test both success and failure scenarios** extensively
+15. **Implement node routing** for distributed scoring architectures
+16. **Validate gRPC responses** before using scores
+17. **Handle connection pooling** for performance in high-load scenarios
+18. **Secure gRPC communication** in production (TLS, authentication)
+19. **Monitor gRPC server health** with readiness/liveness probes
+20. **Version your Protocol Buffers** for backward compatibility
+21. **Test both success and failure scenarios** extensively
+22. **Use Kubernetes API for service discovery** in DaemonSet architectures
 
 ### Performance Considerations
 
@@ -159,14 +162,16 @@ profiles:
    - Useful for testing and baselines
 
 2. **HyperAI** (`pkg/hyperai/`)
-  - **Advanced gRPC-based scoring plugin**
+  - **Advanced gRPC-based scoring plugin with distributed architecture**
   - Connects to Python gRPC server for machine learning scoring
-  - **Architecture**: Supports both sidecar and service deployment
+  - **Architecture Options**: Supports sidecar, service, and **DaemonSet** deployment
   - **Protocol Buffers**: Type-safe gRPC communication
   - **Protocol Update**: Sends full Pod and Node specs as JSON in the gRPC request (see proto in `pkg/hyperai/README.md`)
+  - **DaemonSet Architecture**: Node agents run on every node for distributed, node-specific scoring
+  - **Node Routing**: Central gRPC server routes requests to specific node agents based on Node spec
   - **Fallback Logic**: Returns constant score if gRPC unavailable
   - **Configuration**: Configurable gRPC address and fallback score
-  - **Use Cases**: ML-based node scoring, custom scoring algorithms
+  - **Use Cases**: ML-based node scoring, custom scoring algorithms, node-specific inference
 
 3. **PodState** (`pkg/podstate/`)
    - Basic scoring example
@@ -235,7 +240,10 @@ make constantscore-cleanup      # Clean up resources
 The repository includes comprehensive Makefile targets for the HyperAI plugin with both sidecar and service architectures:
 
 ```bash
-# Complete test cycle for HyperAI (sidecar - recommended)
+# Complete test cycle for HyperAI (DaemonSet - recommended for production)
+make hyperai-daemonset-full-test
+
+# Complete test cycle for HyperAI (sidecar - recommended for development)
 make hyperai-sidecar-full-test
 
 # Complete test cycle for HyperAI (separate service)
@@ -244,15 +252,18 @@ make hyperai-full-test
 # Development workflow
 make hyperai-proto              # Generate gRPC code
 make hyperai-test-grpc          # Test local gRPC connectivity
-make hyperai-sidecar-deploy     # Deploy sidecar architecture
+make hyperai-daemonset-deploy   # Deploy DaemonSet architecture (production)
+make hyperai-sidecar-deploy     # Deploy sidecar architecture (development)
 make hyperai-deploy             # Deploy service architecture
 
 # Individual steps
 make hyperai-image              # Build scheduler Docker image
 make hyperai-grpc-image         # Build gRPC server Docker image
 make hyperai-load-kind          # Load images into kind cluster
+make hyperai-daemonset-test     # Run test pod with DaemonSet
 make hyperai-sidecar-test       # Run test pod with sidecar
 make hyperai-test               # Run test pod with service
+make hyperai-daemonset-logs     # View DaemonSet scheduler logs
 make hyperai-sidecar-logs       # View sidecar scheduler logs
 make hyperai-logs               # View service scheduler logs
 make hyperai-cleanup            # Clean up resources
@@ -441,14 +452,15 @@ Create test files following existing patterns:
 
 #### HyperAI Architecture Comparison
 
-| Aspect | Sidecar Architecture | Service Architecture |
-|--------|---------------------|----------------------|
-| **Latency** | ~0.1ms (localhost) | ~1-5ms (network) |
-| **Reliability** | No network deps | Service discovery required |
-| **Scaling** | Per scheduler pod | Independent scaling |
-| **Deployment** | Atomic (scheduler + gRPC) | Separate lifecycles |
-| **Resource Usage** | Higher per pod | Shared across schedulers |
-| **Use Case** | High-throughput scheduling | Multi-scheduler environments |
+| Aspect | DaemonSet Architecture | Sidecar Architecture | Service Architecture |
+|--------|------------------------|---------------------|----------------------|
+| **Latency** | ~1-2ms (node-local) | ~0.1ms (localhost) | ~1-5ms (network) |
+| **Reliability** | Node-specific agents | No network deps | Service discovery required |
+| **Scaling** | Per-node agents | Per scheduler pod | Independent scaling |
+| **Node Routing** | Native node targeting | Centralized routing | Centralized routing |
+| **Resource Usage** | Distributed per node | Higher per pod | Shared across schedulers |
+| **Use Case** | Node-specific inference | High-throughput scheduling | Multi-scheduler environments |
+| **Production Ready** | ✅ Recommended | ✅ Development | ⚠️ Complex setup |
 
 #### HyperAI Configuration Example
 
@@ -464,9 +476,51 @@ profiles:
   pluginConfig:
   - name: HyperAI
     args:
-      grpcAddress: "localhost:50051"          # Sidecar
-      # grpcAddress: "hyperai-grpc-service.scheduler-plugins.svc.cluster.local:50051"  # Service
+      # DaemonSet architecture (recommended for production)
+      grpcAddress: "localhost:50051"          # Central server in sidecar
+      
+      # Sidecar architecture (recommended for development)  
+      # grpcAddress: "localhost:50051"        # Direct gRPC server
+      
+      # Service architecture
+      # grpcAddress: "hyperai-grpc-service.scheduler-plugins.svc.cluster.local:50051"
+      
       score: 42                               # Fallback score
+```
+
+#### HyperAI DaemonSet Architecture
+
+The DaemonSet architecture deploys node agents on every Kubernetes node for distributed, node-specific scoring:
+
+**Components:**
+- **Central gRPC Server**: Runs as sidecar in scheduler pod, handles node discovery and routing
+- **Node Agents**: Python gRPC servers running on each node via DaemonSet
+- **Node Routing**: Central server routes Pod/Node spec to appropriate node agent
+- **Kubernetes API Integration**: Automatic node discovery using Kubernetes client
+
+**Protocol Flow:**
+1. Scheduler calls central gRPC server with Pod and Node specs
+2. Central server extracts target node name from Node spec JSON
+3. Central server discovers node IP via Kubernetes API
+4. Central server forwards request to specific node agent
+5. Node agent returns score based on node-local context
+6. Central server returns score to scheduler
+
+**Benefits:**
+- **Node-specific context**: Each agent has access to local node state
+- **Distributed scaling**: Scoring load distributed across nodes  
+- **Production ready**: Robust architecture with automatic node discovery
+- **ML-friendly**: Perfect for node-specific inference with NVIDIA Triton or similar
+
+**Deployment:**
+```bash
+# Deploy complete DaemonSet architecture
+make hyperai-daemonset-full-test
+
+# Individual components
+kubectl apply -f manifests/hyperai/node-agent-rbac.yaml      # RBAC permissions
+kubectl apply -f manifests/hyperai/node-agent-daemonset.yaml # Node agents
+kubectl apply -f manifests/hyperai/sidecar.yaml             # Scheduler with central server
 ```
 
 #### HyperAI gRPC Protocol
@@ -477,19 +531,44 @@ syntax = "proto3";
 package hyperai;
 option go_package = "sigs.k8s.io/scheduler-plugins/pkg/hyperai";
 
+// Central HyperAI service (runs in scheduler sidecar)
 service HyperAI {
   rpc GetScore(ScoreRequest) returns (ScoreReply) {}
 }
 
+// Node agent service (runs on each node via DaemonSet)
+service NodeAgent {
+  rpc ProcessPodSpec(PodSpecRequest) returns (PodSpecReply) {}
+}
+
+// Scheduler to central server communication
 message ScoreRequest {
-  string pod_name = 1;
-  string node_name = 2;
+  string pod_spec = 1;   // Full Pod spec as JSON string
+  string node_spec = 2;  // Full Node spec as JSON string
 }
 
 message ScoreReply {
   int64 score = 1;
 }
+
+// Central server to node agent communication
+message PodSpecRequest {
+  string pod_spec = 1;   // Full Pod spec as JSON string
+  string node_spec = 2;  // Full Node spec as JSON string
+}
+
+message PodSpecReply {
+  int64 score = 1;
+  string reason = 2;     // Optional: scoring explanation
+}
 ```
+
+**Key Protocol Features:**
+- **Full Spec Transfer**: Complete Pod and Node specifications sent as JSON strings
+- **Node Routing**: Central server extracts node name from Node spec for routing
+- **Two-tier Communication**: Scheduler ↔ Central Server ↔ Node Agents
+- **Type Safety**: Protocol Buffers ensure consistent message format
+- **Extensible**: Easy to add metadata, features, or scoring context
 
 ### Common Patterns
 

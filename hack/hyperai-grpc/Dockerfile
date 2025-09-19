@@ -2,8 +2,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install grpcio and grpcio-tools
-RUN pip install grpcio==1.75.0 grpcio-tools==1.75.0
+# Install grpcio, grpcio-tools, and kubernetes client
+RUN pip install grpcio==1.75.0 grpcio-tools==1.75.0 kubernetes
 
 # Copy the gRPC files
 COPY hyperai.proto .

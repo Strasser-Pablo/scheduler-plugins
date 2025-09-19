@@ -1,5 +1,6 @@
 package hyperai
 
+import (
 	"context"
 	"encoding/json"
 	"fmt"
@@ -70,6 +71,7 @@ func (p *HyperAI) Score(ctx context.Context, state *framework.CycleState, pod *v
 
 	p.logger.Info("✅ HyperAI gRPC SUCCESS: Received score from gRPC server", "score", response.Score, "pod", pod.Name, "node", nodeInfo.Node().Name, "grpcAddress", p.args.GRPCAddress)
 	return response.Score, nil
+}
 
 // podToJSON marshals a Pod to JSON string
 func podToJSON(pod *v1.Pod) (string, error) {
@@ -87,7 +89,6 @@ func nodeToJSON(node *v1.Node) (string, error) {
 		return "", err
 	}
 	return string(data), nil
-}
 }
 
 // ScoreExtensions of the Score plugin.

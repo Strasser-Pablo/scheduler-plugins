@@ -200,6 +200,62 @@ hyperai-sidecar-cleanup:
 .PHONY: hyperai-sidecar-full-test
 hyperai-sidecar-full-test: hyperai-sidecar-cleanup hyperai-sidecar-test hyperai-sidecar-logs
 
+# HyperAI DaemonSet targets
+.PHONY: hyperai-node-agent-image
+hyperai-node-agent-image:
+	@echo "Building HyperAI Node Agent image..."
+	cd hack/hyperai-grpc && docker build -f Dockerfile.node-agent -t hyperai-node-agent:latest .
+
+.PHONY: hyperai-daemonset-load-kind
+hyperai-daemonset-load-kind: hyperai-image hyperai-grpc-image hyperai-node-agent-image
+	kind load docker-image $(HYPERAI_IMAGE_NAME):$(HYPERAI_IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
+	kind load docker-image hyperai-grpc-server:latest --name $(KIND_CLUSTER_NAME)
+	kind load docker-image hyperai-node-agent:latest --name $(KIND_CLUSTER_NAME)
+
+.PHONY: hyperai-daemonset-setup-rbac
+hyperai-daemonset-setup-rbac: hyperai-setup-rbac
+	@echo "Setting up RBAC for HyperAI DaemonSet..."
+	kubectl apply -f manifests/hyperai/node-agent-rbac.yaml
+
+.PHONY: hyperai-daemonset-deploy
+hyperai-daemonset-deploy: hyperai-daemonset-load-kind hyperai-daemonset-setup-rbac
+	@echo "Deploying HyperAI DaemonSet architecture..."
+	kubectl apply -f manifests/hyperai/scheduler-config-sidecar.yaml
+	kubectl apply -f manifests/hyperai/scheduler-deployment-sidecar.yaml
+	kubectl -n scheduler-plugins rollout status deploy/hyperai-scheduler-sidecar --timeout=120s
+	@echo "Deploying Node Agent DaemonSet..."
+	kubectl apply -f manifests/hyperai/node-agent-service.yaml
+	kubectl apply -f manifests/hyperai/node-agent-daemonset.yaml
+	kubectl -n scheduler-plugins rollout status daemonset/hyperai-node-agent --timeout=120s
+
+.PHONY: hyperai-daemonset-test
+hyperai-daemonset-test: hyperai-daemonset-deploy
+	@echo "Running HyperAI DaemonSet test pod..."
+	kubectl apply -f manifests/hyperai/test-pod-with-agent.yaml
+	kubectl wait --for=condition=Ready pod/hyperai-test-pod-daemonset --timeout=120s
+	@echo "DaemonSet test pod deployed successfully!"
+	kubectl get pod hyperai-test-pod-daemonset -o wide
+
+.PHONY: hyperai-daemonset-logs
+hyperai-daemonset-logs:
+	@echo "Fetching HyperAI DaemonSet logs..."
+	kubectl -n scheduler-plugins logs deploy/hyperai-scheduler-sidecar -c kube-scheduler --tail=50 | grep -i "hyperai\|grpc\|score" || true
+	@echo "\n--- Node Agent Logs ---"
+	kubectl -n scheduler-plugins logs daemonset/hyperai-node-agent --tail=50 | grep -i "hyperai\|grpc\|score" || true
+
+.PHONY: hyperai-daemonset-cleanup
+hyperai-daemonset-cleanup:
+	@echo "Cleaning up HyperAI DaemonSet resources..."
+	kubectl delete -f manifests/hyperai/test-pod-with-agent.yaml --ignore-not-found=true
+	kubectl delete -f manifests/hyperai/node-agent-daemonset.yaml --ignore-not-found=true
+	kubectl delete -f manifests/hyperai/node-agent-service.yaml --ignore-not-found=true
+	kubectl delete -f manifests/hyperai/node-agent-rbac.yaml --ignore-not-found=true
+	kubectl delete -f manifests/hyperai/scheduler-deployment-sidecar.yaml --ignore-not-found=true
+	kubectl delete -f manifests/hyperai/scheduler-config-sidecar.yaml --ignore-not-found=true
+
+.PHONY: hyperai-daemonset-full-test
+hyperai-daemonset-full-test: hyperai-daemonset-cleanup hyperai-daemonset-test hyperai-daemonset-logs
+
 .PHONY: update-gomod
 update-gomod:
 	hack/update-gomod.sh
@@ -256,6 +312,11 @@ help:
 	@echo "  hyperai-sidecar-logs - Show sidecar scheduler logs"
 	@echo "  hyperai-sidecar-cleanup - Clean up sidecar resources"
 	@echo "  hyperai-sidecar-full-test - Run complete sidecar test cycle"
+	@echo "  hyperai-daemonset-deploy - Deploy HyperAI with DaemonSet architecture"
+	@echo "  hyperai-daemonset-test - Run HyperAI test pod with DaemonSet agents"
+	@echo "  hyperai-daemonset-logs - Show DaemonSet logs (scheduler, node agent)"
+	@echo "  hyperai-daemonset-cleanup - Clean up DaemonSet resources"
+	@echo "  hyperai-daemonset-full-test - Run complete DaemonSet test cycle"
 	@echo "  hyperai-deploy      - Deploy HyperAI with separate gRPC service"
 	@echo "  hyperai-test        - Run the HyperAI test pod"
 	@echo "  hyperai-full-test   - Run complete test cycle with separate gRPC service"
@@ -274,5 +335,6 @@ help:
 	@echo "  KIND_CLUSTER_NAME        - Kind cluster name (default: sched)"
 	@echo ""
 	@echo "Quick Start:"
-	@echo "  make constantscore-full-test  - Test ConstantScore plugin"
-	@echo "  make hyperai-sidecar-full-test - Test HyperAI plugin (sidecar, recommended)"
+	@echo "  make constantscore-full-test     - Test ConstantScore plugin"
+	@echo "  make hyperai-sidecar-full-test   - Test HyperAI plugin (sidecar, recommended)"
+	@echo "  make hyperai-daemonset-full-test - Test HyperAI plugin (DaemonSet architecture)"
