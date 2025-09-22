@@ -26,7 +26,7 @@ if _version_not_supported:
 
 
 class HyperAIStub(object):
-    """Central HyperAI service (runs as sidecar with scheduler)
+    """Central HyperAI service
     """
 
     def __init__(self, channel):
@@ -40,14 +40,27 @@ class HyperAIStub(object):
                 request_serializer=hyperai__pb2.ScoreRequest.SerializeToString,
                 response_deserializer=hyperai__pb2.ScoreReply.FromString,
                 _registered_method=True)
+        self.AgentConnect = channel.stream_stream(
+                '/hyperai.HyperAI/AgentConnect',
+                request_serializer=hyperai__pb2.AgentMessage.SerializeToString,
+                response_deserializer=hyperai__pb2.ServerMessage.FromString,
+                _registered_method=True)
 
 
 class HyperAIServicer(object):
-    """Central HyperAI service (runs as sidecar with scheduler)
+    """Central HyperAI service
     """
 
     def GetScore(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Scheduler -> Central server
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AgentConnect(self, request_iterator, context):
+        """Node Agent <-> Central server (bidirectional streaming control plane)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -60,6 +73,11 @@ def add_HyperAIServicer_to_server(servicer, server):
                     request_deserializer=hyperai__pb2.ScoreRequest.FromString,
                     response_serializer=hyperai__pb2.ScoreReply.SerializeToString,
             ),
+            'AgentConnect': grpc.stream_stream_rpc_method_handler(
+                    servicer.AgentConnect,
+                    request_deserializer=hyperai__pb2.AgentMessage.FromString,
+                    response_serializer=hyperai__pb2.ServerMessage.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'hyperai.HyperAI', rpc_method_handlers)
@@ -69,7 +87,7 @@ def add_HyperAIServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class HyperAI(object):
-    """Central HyperAI service (runs as sidecar with scheduler)
+    """Central HyperAI service
     """
 
     @staticmethod
@@ -99,56 +117,8 @@ class HyperAI(object):
             metadata,
             _registered_method=True)
 
-
-class NodeAgentStub(object):
-    """Node Agent service (runs as daemonset on each node)
-    """
-
-    def __init__(self, channel):
-        """Constructor.
-
-        Args:
-            channel: A grpc.Channel.
-        """
-        self.ProcessPodSpec = channel.unary_unary(
-                '/hyperai.NodeAgent/ProcessPodSpec',
-                request_serializer=hyperai__pb2.PodSpecRequest.SerializeToString,
-                response_deserializer=hyperai__pb2.PodSpecReply.FromString,
-                _registered_method=True)
-
-
-class NodeAgentServicer(object):
-    """Node Agent service (runs as daemonset on each node)
-    """
-
-    def ProcessPodSpec(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-
-def add_NodeAgentServicer_to_server(servicer, server):
-    rpc_method_handlers = {
-            'ProcessPodSpec': grpc.unary_unary_rpc_method_handler(
-                    servicer.ProcessPodSpec,
-                    request_deserializer=hyperai__pb2.PodSpecRequest.FromString,
-                    response_serializer=hyperai__pb2.PodSpecReply.SerializeToString,
-            ),
-    }
-    generic_handler = grpc.method_handlers_generic_handler(
-            'hyperai.NodeAgent', rpc_method_handlers)
-    server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('hyperai.NodeAgent', rpc_method_handlers)
-
-
- # This class is part of an EXPERIMENTAL API.
-class NodeAgent(object):
-    """Node Agent service (runs as daemonset on each node)
-    """
-
     @staticmethod
-    def ProcessPodSpec(request,
+    def AgentConnect(request_iterator,
             target,
             options=(),
             channel_credentials=None,
@@ -158,12 +128,12 @@ class NodeAgent(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
+        return grpc.experimental.stream_stream(
+            request_iterator,
             target,
-            '/hyperai.NodeAgent/ProcessPodSpec',
-            hyperai__pb2.PodSpecRequest.SerializeToString,
-            hyperai__pb2.PodSpecReply.FromString,
+            '/hyperai.HyperAI/AgentConnect',
+            hyperai__pb2.AgentMessage.SerializeToString,
+            hyperai__pb2.ServerMessage.FromString,
             options,
             channel_credentials,
             insecure,

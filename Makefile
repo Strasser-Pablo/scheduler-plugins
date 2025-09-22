@@ -145,6 +145,8 @@ hyperai-deploy: hyperai-load-kind hyperai-setup-rbac
 .PHONY: hyperai-test
 hyperai-test: hyperai-deploy
 	@echo "Testing HyperAI with comprehensive pod specifications..."
+	@echo "Waiting 5 seconds to allow agents to establish gRPC streams..."
+	sleep 5
 	kubectl apply -f hack/hyperai-grpc/test-triton-final-working.yaml
 	kubectl wait --for=condition=Ready pod/test-triton-final-working --timeout=120s
 	@echo "✅ Test pod deployed successfully!"
@@ -157,10 +159,10 @@ hyperai-logs:
 	kubectl -n scheduler-plugins logs deploy/hyperai-scheduler --tail=20 | grep -E "(HyperAI|gRPC|score)" || true
 	@echo ""
 	@echo "=== Central gRPC Server Logs ==="
-	kubectl -n scheduler-plugins logs deploy/hyperai-grpc-server --tail=20 | grep -E "(gRPC|ProcessPodSpec|score)" || true
+	kubectl -n scheduler-plugins logs deploy/hyperai-grpc-server --tail=50 | grep -E "(gRPC|AgentConnect|GetScore|score|Registered agent session|Streaming)" || true
 	@echo ""
 	@echo "=== Triton Node Agent Logs (sample) ==="
-	kubectl -n scheduler-plugins logs -l app=hyperai-triton-node-agent -c triton-node-agent --tail=20 | head -15 || true
+	kubectl -n scheduler-plugins logs -l app=hyperai-triton-node-agent -c triton-node-agent --tail=50 | head -25 || true
 	@echo ""
 	@echo "=== Triton Server Status ==="
 	kubectl -n scheduler-plugins get pods -l app=hyperai-triton-node-agent

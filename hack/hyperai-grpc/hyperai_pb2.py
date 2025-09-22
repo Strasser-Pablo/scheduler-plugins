@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rhyperai.proto\x12\x07hyperai\"3\n\x0cScoreRequest\x12\x10\n\x08pod_json\x18\x01 \x01(\t\x12\x11\n\tnode_json\x18\x02 \x01(\t\"\x1b\n\nScoreReply\x12\r\n\x05score\x18\x01 \x01(\x03\"l\n\x0ePodSpecRequest\x12\x10\n\x08pod_json\x18\x01 \x01(\t\x12\x11\n\tnode_json\x18\x02 \x01(\t\x12\x17\n\x0ftarget_pod_name\x18\x03 \x01(\t\x12\x1c\n\x14target_pod_namespace\x18\x04 \x01(\t\"?\n\x0cPodSpecReply\x12\r\n\x05score\x18\x01 \x01(\x03\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x0f\n\x07success\x18\x03 \x01(\x08\x32\x43\n\x07HyperAI\x12\x38\n\x08GetScore\x12\x15.hyperai.ScoreRequest\x1a\x13.hyperai.ScoreReply\"\x00\x32O\n\tNodeAgent\x12\x42\n\x0eProcessPodSpec\x12\x17.hyperai.PodSpecRequest\x1a\x15.hyperai.PodSpecReply\"\x00\x42+Z)sigs.k8s.io/scheduler-plugins/pkg/hyperaib\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rhyperai.proto\x12\x07hyperai\"3\n\x0cScoreRequest\x12\x10\n\x08pod_json\x18\x01 \x01(\t\x12\x11\n\tnode_json\x18\x02 \x01(\t\"\x1b\n\nScoreReply\x12\r\n\x05score\x18\x01 \x01(\x03\"\xa0\x01\n\x0c\x41gentMessage\x12$\n\x05hello\x18\x01 \x01(\x0b\x32\x13.hyperai.AgentHelloH\x00\x12,\n\theartbeat\x18\x02 \x01(\x0b\x32\x17.hyperai.AgentHeartbeatH\x00\x12\x35\n\x0escore_response\x18\x03 \x01(\x0b\x32\x1b.hyperai.AgentScoreResponseH\x00\x42\x05\n\x03msg\"w\n\rServerMessage\x12\x34\n\rscore_request\x18\x01 \x01(\x0b\x32\x1b.hyperai.ServerScoreRequestH\x00\x12)\n\x07\x63ontrol\x18\x02 \x01(\x0b\x32\x16.hyperai.ServerControlH\x00\x42\x05\n\x03msg\"\xbb\x01\n\nAgentHello\x12\x11\n\tnode_name\x18\x01 \x01(\t\x12\x15\n\ragent_version\x18\x02 \x01(\t\x12\x14\n\x0c\x63\x61pabilities\x18\x03 \x03(\t\x12/\n\x06labels\x18\x04 \x03(\x0b\x32\x1f.hyperai.AgentHello.LabelsEntry\x12\r\n\x05model\x18\x05 \x01(\t\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x1c\n\x0e\x41gentHeartbeat\x12\n\n\x02ts\x18\x01 \x01(\x03\"M\n\x12ServerScoreRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x10\n\x08pod_json\x18\x02 \x01(\t\x12\x11\n\tnode_json\x18\x03 \x01(\t\"Y\n\x12\x41gentScoreResponse\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\r\n\x05score\x18\x02 \x01(\x03\x12\x0f\n\x07success\x18\x03 \x01(\x08\x12\x0f\n\x07message\x18\x04 \x01(\t\".\n\rServerControl\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0f\n\x07payload\x18\x02 \x01(\t2\x88\x01\n\x07HyperAI\x12\x38\n\x08GetScore\x12\x15.hyperai.ScoreRequest\x1a\x13.hyperai.ScoreReply\"\x00\x12\x43\n\x0c\x41gentConnect\x12\x15.hyperai.AgentMessage\x1a\x16.hyperai.ServerMessage\"\x00(\x01\x30\x01\x42+Z)sigs.k8s.io/scheduler-plugins/pkg/hyperaib\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,16 +32,28 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'hyperai_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z)sigs.k8s.io/scheduler-plugins/pkg/hyperai'
+  _globals['_AGENTHELLO_LABELSENTRY']._loaded_options = None
+  _globals['_AGENTHELLO_LABELSENTRY']._serialized_options = b'8\001'
   _globals['_SCOREREQUEST']._serialized_start=26
   _globals['_SCOREREQUEST']._serialized_end=77
   _globals['_SCOREREPLY']._serialized_start=79
   _globals['_SCOREREPLY']._serialized_end=106
-  _globals['_PODSPECREQUEST']._serialized_start=108
-  _globals['_PODSPECREQUEST']._serialized_end=216
-  _globals['_PODSPECREPLY']._serialized_start=218
-  _globals['_PODSPECREPLY']._serialized_end=281
-  _globals['_HYPERAI']._serialized_start=283
-  _globals['_HYPERAI']._serialized_end=350
-  _globals['_NODEAGENT']._serialized_start=352
-  _globals['_NODEAGENT']._serialized_end=431
+  _globals['_AGENTMESSAGE']._serialized_start=109
+  _globals['_AGENTMESSAGE']._serialized_end=269
+  _globals['_SERVERMESSAGE']._serialized_start=271
+  _globals['_SERVERMESSAGE']._serialized_end=390
+  _globals['_AGENTHELLO']._serialized_start=393
+  _globals['_AGENTHELLO']._serialized_end=580
+  _globals['_AGENTHELLO_LABELSENTRY']._serialized_start=535
+  _globals['_AGENTHELLO_LABELSENTRY']._serialized_end=580
+  _globals['_AGENTHEARTBEAT']._serialized_start=582
+  _globals['_AGENTHEARTBEAT']._serialized_end=610
+  _globals['_SERVERSCOREREQUEST']._serialized_start=612
+  _globals['_SERVERSCOREREQUEST']._serialized_end=689
+  _globals['_AGENTSCORERESPONSE']._serialized_start=691
+  _globals['_AGENTSCORERESPONSE']._serialized_end=780
+  _globals['_SERVERCONTROL']._serialized_start=782
+  _globals['_SERVERCONTROL']._serialized_end=828
+  _globals['_HYPERAI']._serialized_start=831
+  _globals['_HYPERAI']._serialized_end=967
 # @@protoc_insertion_point(module_scope)

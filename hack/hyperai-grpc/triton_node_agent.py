@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Triton-enabled Node Agent for HyperAI scheduler
-Runs as part of DaemonSet and provides gRPC interface with full pod/node specification support
+Triton-enabled Node Agent (streaming client)
+Connects to central HyperAI service via bidirectional gRPC stream and handles scoring requests.
+No inbound gRPC server or hostNetwork required.
 """
 import os
 import json
@@ -9,7 +10,7 @@ import logging
 import time
 import threading
 import grpc
-from concurrent import futures
+import queue
 import tritonclient.http as httpclient
 import numpy as np
 
@@ -25,16 +26,19 @@ logger = logging.getLogger(__name__)
 thread_local = threading.local()
 
 
-class TritonNodeAgent(hyperai_pb2_grpc.NodeAgentServicer):
+class TritonNodeAgent:
     def __init__(self):
         self.node_name = os.getenv("NODE_NAME", "unknown-node")
-        self.triton_url = "localhost:8000"  # Triton HTTP port
+        self.triton_url = os.getenv("TRITON_URL", "localhost:8000")  # Triton HTTP port
+        self.central_addr = os.getenv("CENTRAL_ADDR", "localhost:50051")
+        self.agent_version = os.getenv("AGENT_VERSION", "0.1.0")
 
         # Initialize Triton client for main thread
         self.triton_client = None
         self._init_triton_client()
-
-        logger.info(f"🚀 Triton Node Agent initialized on {self.node_name}")
+        logger.info(
+            f"🚀 Triton Node Agent initialized on {self.node_name}, central={self.central_addr}"
+        )
 
     def _init_triton_client(self):
         """Initialize connection to local Triton server"""
@@ -71,41 +75,23 @@ class TritonNodeAgent(hyperai_pb2_grpc.NodeAgentServicer):
                 thread_local.triton_client = None
         return thread_local.triton_client
 
-    def ProcessPodSpec(self, request, context):
-        """Handle NodeAgent ProcessPodSpec requests with full pod and node specifications"""
-        logger.info(
-            f"📨 ProcessPodSpec request for pod {request.target_pod_name} in namespace {request.target_pod_namespace}"
-        )
-        logger.debug(f"   Pod JSON: {request.pod_json[:200]}...")
-        logger.debug(f"   Node JSON: {request.node_json[:200]}...")
-
+    def handle_score_request(self, req: hyperai_pb2.ServerScoreRequest):
+        """Handle a ServerScoreRequest and return AgentScoreResponse."""
         try:
-            # Parse full pod and node specifications
-            pod_data = json.loads(request.pod_json) if request.pod_json else {}
-            node_data = json.loads(request.node_json) if request.node_json else {}
-
-            # Extract comprehensive features for ML scoring
+            pod_data = json.loads(req.pod_json) if req.pod_json else {}
+            node_data = json.loads(req.node_json) if req.node_json else {}
             features = self._extract_comprehensive_features(pod_data, node_data)
-            logger.info(
-                f"🔍 Extracted features: cpu={features.get('cpu_millicores')}mc, mem={features.get('memory_mb')}MB, gpu={features.get('gpu_count')}, containers={features.get('container_count')}"
-            )
-
-            # Get score using Triton with full feature set
             score = self._get_enhanced_triton_score(features)
-
-            logger.info(
-                f"📡 ProcessPodSpec response: score={score} for pod {request.target_pod_name}"
-            )
-            return hyperai_pb2.PodSpecReply(
+            return hyperai_pb2.AgentScoreResponse(
+                request_id=req.request_id,
                 score=score,
-                message=f"Scored on node {self.node_name} using full pod/node specification",
                 success=True,
+                message=f"OK on {self.node_name}",
             )
-
         except Exception as e:
-            logger.error(f"❌ Error in ProcessPodSpec: {e}", exc_info=True)
-            return hyperai_pb2.PodSpecReply(
-                score=0, message=f"Error processing pod spec: {str(e)}", success=False
+            logger.error(f"❌ Error scoring: {e}", exc_info=True)
+            return hyperai_pb2.AgentScoreResponse(
+                request_id=req.request_id, score=0, success=False, message=str(e)
             )
 
     def _extract_comprehensive_features(self, pod_data, node_data):
@@ -478,35 +464,107 @@ class TritonNodeAgent(hyperai_pb2_grpc.NodeAgentServicer):
             logger.warning(f"⚠️ Fallback scoring error: {e}")
             return 0
 
+    def run(self):
+        """Connect to central and handle the streaming control plane."""
+        backoff = 1.0
+        was_connected = False  # Track whether we've successfully connected before
+        while True:
+            try:
+                logger.info(f"🔗 Connecting to central at {self.central_addr}")
+                # Use keepalive options to avoid idle timeouts and detect broken links rapidly.
+                channel_opts = [
+                    ("grpc.keepalive_time_ms", 10000),  # send keepalive every 10s
+                    ("grpc.keepalive_timeout_ms", 5000),  # 5s timeout waiting for ack
+                    (
+                        "grpc.http2.max_pings_without_data",
+                        0,
+                    ),  # allow pings without data
+                    (
+                        "grpc.keepalive_permit_without_calls",
+                        1,
+                    ),  # allow pings even with no active calls
+                    (
+                        "grpc.http2.min_time_between_pings_ms",
+                        10000,
+                    ),  # min time between client pings
+                    ("grpc.http2.min_ping_interval_without_data_ms", 10000),
+                ]
+                with grpc.insecure_channel(
+                    self.central_addr, options=channel_opts
+                ) as channel:
+                    # Best-effort channel state tracing
+                    try:
+                        channel.subscribe(
+                            lambda s: logger.info(f"🔄 gRPC channel state: {s}"),
+                            try_to_connect=True,
+                        )
+                    except Exception:
+                        pass
+                    stub = hyperai_pb2_grpc.HyperAIStub(channel)
 
-def serve():
-    """Start the gRPC server"""
-    logger.info(
-        f"🚀 Starting Triton Node Agent on {os.getenv('NODE_NAME', 'unknown-node')}"
-    )
+                    # Output queue for score responses
+                    self._out_queue = queue.Queue()
 
-    # Create the service
-    service = TritonNodeAgent()
+                    def request_iter():
+                        # Send hello first
+                        hello = hyperai_pb2.AgentMessage(
+                            hello=hyperai_pb2.AgentHello(
+                                node_name=self.node_name,
+                                agent_version=self.agent_version,
+                                capabilities=["triton"],
+                                labels={},
+                                model="scheduler_model",
+                            )
+                        )
+                        yield hello
 
-    # Start gRPC server
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    hyperai_pb2_grpc.add_NodeAgentServicer_to_server(service, server)
+                        # Heartbeat loop runs in-line with a small timer; we also yield responses here
+                        last_hb = 0
+                        while True:
+                            now = time.time()
+                            if now - last_hb > 10:
+                                last_hb = now
+                                yield hyperai_pb2.AgentMessage(
+                                    heartbeat=hyperai_pb2.AgentHeartbeat(ts=int(now))
+                                )
+                            # Yield score responses queued by the reader
+                            try:
+                                resp = self._out_queue.get(timeout=0.2)
+                                yield hyperai_pb2.AgentMessage(score_response=resp)
+                            except Exception:
+                                pass
 
-    # Listen on all interfaces
-    listen_addr = "0.0.0.0:50051"
-    server.add_insecure_port(listen_addr)
+                    stream = stub.AgentConnect(request_iter())
+                    if was_connected:
+                        logger.info("🔁 Reconnected to central: %s", self.central_addr)
+                    else:
+                        logger.info("🟢 Streaming established to central")
+                    was_connected = True
 
-    logger.info(f"🌐 gRPC server listening on {listen_addr}")
-    logger.info("📋 Serving NodeAgent.ProcessPodSpec with full pod/node specifications")
+                    try:
+                        # Read server messages (score requests)
+                        for msg in stream:
+                            which = msg.WhichOneof("msg")
+                            if which == "score_request":
+                                req = msg.score_request
+                                resp = self.handle_score_request(req)
+                                # enqueue response to be sent by request_iter
+                                self._out_queue.put(resp)
+                            else:
+                                # ignore controls for now
+                                pass
+                    except Exception as e:
+                        logger.warning(f"⚠️ Stream read ended: {e}")
+                        # fall through to reconnect
 
-    server.start()
-
-    try:
-        server.wait_for_termination()
-    except KeyboardInterrupt:
-        logger.info("🛑 Shutting down Triton Node Agent")
-        server.stop(0)
+            except KeyboardInterrupt:
+                logger.info("🛑 Agent interrupted, exiting")
+                break
+            except Exception as e:
+                logger.warning(f"⚠️ Stream error, reconnecting: {e}", exc_info=True)
+                time.sleep(backoff)
+                backoff = min(backoff * 2, 15.0)
 
 
 if __name__ == "__main__":
-    serve()
+    TritonNodeAgent().run()
