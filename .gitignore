@@ -26,3 +26,4 @@ __pycache__/
 # Ignore vendor/
 vendor
 scheduler
+hack/hyperai-grpc/triton_models/scheduler_model/1/model.onnx
