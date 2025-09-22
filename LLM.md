@@ -1,8 +1,8 @@
-# LLM Development Guide for Kubernetes Scheduler Plugins
+# LLM Development Guide for HyperAI Scheduler Plugin
 
 ## Repository Overview
 
-This repository (`scheduler-plugins`) contains out-of-tree scheduler plugins for Kubernetes based on the [scheduler framework](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/). It provides production-ready scheduler plugins that are exercised in large companies, available as Golang SDK libraries or pre-built container images.
+This repository (`scheduler-plugins`) contains the **HyperAI scheduler plugin** for Kubernetes based on the [scheduler framework](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/). It provides a production-ready ML-based node scoring plugin that connects to Python gRPC servers for advanced scheduling decisions.
 
 **Key Facts:**
 - **Language**: Go 1.24+ 

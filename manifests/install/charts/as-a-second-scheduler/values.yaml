@@ -26,26 +26,16 @@ controller:
   affinity: {}
   tolerations: []
 
-# LoadVariationRiskBalancing and TargetLoadPacking are not enabled by default
-# as they need extra RBAC privileges on metrics.k8s.io.
+# HyperAI plugin configuration for ML-based node scoring
 
 plugins:
-  enabled: ["Coscheduling","CapacityScheduling","NodeResourceTopologyMatch","NodeResourcesAllocatable"]
-  disabled: ["PrioritySort"] # only in-tree plugins need to be defined here
+  enabled: ["HyperAI"]
+  disabled: ["*"] # disable all other plugins for HyperAI-only setup
 
-# Customize the enabled plugins' config.
-# Refer to the "pluginConfig" section of manifests/<plugin>/scheduler-config.yaml.
-# For example, for Coscheduling plugin, you want to customize the permit waiting timeout to 10 seconds:
+# Customize the HyperAI plugin configuration.
+# Refer to the "pluginConfig" section of manifests/hyperai/scheduler-config.yaml.
 pluginConfig:
-- name: Coscheduling
+- name: HyperAI
   args:
-    permitWaitingTimeSeconds: 10 # default is 60
-# Or, customize the other plugins
-# - name: NodeResourceTopologyMatch
-#   args:
-#     scoringStrategy:
-#       type: MostAllocated # default is LeastAllocated
-#- name: SySched
-#  args:
-#    defaultProfileNamespace: "default"
-#    defaultProfileName: "full-seccomp"
+    grpcAddress: "localhost:50051" # gRPC server address for Python scoring service
+    score: 42 # fallback score when gRPC unavailable

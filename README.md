@@ -1,12 +1,10 @@
 [![Go Report Card](https://goreportcard.com/badge/kubernetes-sigs/scheduler-plugins)](https://goreportcard.com/report/kubernetes-sigs/scheduler-plugins) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/kubernetes-sigs/scheduler-plugins/blob/master/LICENSE)
 
-# Scheduler Plugins
+# Scheduler Plugins - HyperAI Focus
 
-Repository for out-of-tree scheduler plugins based on the [scheduler framework](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/).
+Repository for the **HyperAI scheduler plugin** based on the [scheduler framework](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/).
 
-This repo provides scheduler plugins that are exercised in large companies.
-These plugins can be vendored as Golang SDK libraries or used out-of-box via the pre-built images or Helm charts.
-Additionally, this repo incorporates best practices and utilities to compose a high-quality scheduler plugin.
+This repository provides the HyperAI plugin, a machine learning-based node scoring plugin that connects to Python gRPC servers for advanced scheduling decisions. The plugin can be used as a Golang SDK library or deployed via pre-built images and Helm charts.
 
 ## Install
 
@@ -19,28 +17,9 @@ docker pull registry.k8s.io/scheduler-plugins/kube-scheduler:$TAG
 docker pull registry.k8s.io/scheduler-plugins/controller:$TAG
 ```
 
-## ConstantScore Plugin Makefile
-
-This repository has been configured with a specialized `Makefile` focused on building, testing, and deploying the **ConstantScore** scheduler plugin, including automated workflows for local development with Kubernetes-in-Kind.
-
-### Key Targets
-
-- **build**: Builds the scheduler binary with ConstantScore plugin.
-- **constantscore-image**: Builds the ConstantScore Docker image.
-- **constantscore-load-kind**: Loads the image into a kind cluster.
-- **constantscore-deploy**: Deploys ConstantScore scheduler to kind cluster.
-- **constantscore-test**: Runs the ConstantScore test pod.
-- **constantscore-full-test**: Complete test cycle (cleanup, deploy, test, logs).
-- **unit-test**: Runs unit tests.
-- **integration-test**: Runs integration tests.
-- **verify**: Runs all verification scripts (formatting, codegen, etc).
-- **clean**: Cleans build artifacts.
-- **help**: Shows all available targets and configuration options.
-
 ## HyperAI Plugin Makefile
 
-
-The repository also includes full support for the **HyperAI** plugin, which connects to a Python gRPC server for advanced node scoring. The plugin supports multiple deployment architectures including sidecar, service, and **DaemonSet** deployments.
+The repository includes full support for the **HyperAI** plugin, which connects to a Python gRPC server for advanced node scoring. The plugin supports multiple deployment architectures including sidecar, service, and **DaemonSet** deployments.
 
 **Protocol Note:**
 The HyperAI plugin sends the full Pod and Node specs as JSON strings in the gRPC request, not just names. See `pkg/hyperai/README.md` for details and proto example.
@@ -132,72 +111,10 @@ make hyperai-sidecar-full-test
 make hyperai-full-test
 ```
 
-### ConstantScore Quick Start
-
-The `constantscore-full-test` target is the recommended way to build, deploy, and validate the ConstantScore plugin in a local kind cluster. It performs the following steps:
-
-1. Cleans up any existing ConstantScore deployments.
-2. Builds the scheduler binary with ConstantScore plugin.
-3. Builds and loads the Docker image into the kind cluster.
-4. Sets up necessary RBAC and namespace.
-5. Deploys the ConstantScore scheduler.
-6. Runs a test pod to validate scheduling.
-7. Shows logs with constant score messages.
-
-#### Usage Example
-
-```sh
-# Quick test - runs the complete cycle
-make constantscore-full-test
-
-# Or step by step
-make build
-make constantscore-image
-make constantscore-deploy
-make constantscore-test
-make constantscore-logs
-```
-
-#### Configuration Variables
-
-You can customize the behavior by setting these variables:
-
-```sh
-# Custom image name and tag
-make constantscore-full-test CONSTANTSCORE_IMAGE_NAME=my-scheduler CONSTANTSCORE_IMAGE_TAG=v1.0.0
-
-# Different kind cluster name
-make constantscore-full-test KIND_CLUSTER_NAME=my-cluster
-```
-
-**Requirements:**
-- Docker
-- [kind](https://kind.sigs.k8s.io/) cluster named `sched` running (or customize with KIND_CLUSTER_NAME)
-- kubectl configured to access the kind cluster
-
-**What happens:**
-- The scheduler binary is built with ConstantScore plugin
-- Docker image is built using Dockerfile.constantscore
-- Image is loaded into the kind cluster
-- Namespace and RBAC are configured
-- ConstantScore scheduler is deployed
-- Test pod is scheduled using the ConstantScore scheduler
-- Logs are displayed showing constant score scheduling decisions
-
-If the test pod is `Running` and `Ready`, and you see "Returning constant score" messages in the logs, the deployment is successful.
-
-#### Proxy Configuration
-
-If you encounter Go module download issues, you can set a Go proxy before running the Makefile:
-
-```sh
-go env -w GOPROXY=https://proxy.golang.org,direct
-# or for China: go env -w GOPROXY=https://goproxy.cn,direct
-```
-
 ### For LLMs and Automation
 
-- Always use the `constantscore-full-test` target for end-to-end local validation of the ConstantScore plugin.
+- Always use the `hyperai-daemonset-full-test` target for end-to-end local validation of the HyperAI plugin with production-like DaemonSet architecture.
+- Use `hyperai-sidecar-full-test` for development and testing with simpler sidecar architecture.
 - Use `make help` to see all available targets and configuration options.
 - Ensure all prerequisites (Docker, kind, kubectl) are met.
 - The Makefile is self-documenting; inspect it for more targets and details.
@@ -208,24 +125,9 @@ You can find [how to install release image](doc/install.md) here.
 
 ## Plugins
 
-The kube-scheduler binary includes the below list of plugins. They can be configured by creating one or more
-[scheduler profiles](https://kubernetes.io/docs/reference/scheduling/config/#multiple-profiles).
+The kube-scheduler binary focuses specifically on the **HyperAI plugin** for machine learning-based node scoring.
 
-* [Capacity Scheduling](pkg/capacityscheduling/README.md)
-* [Coscheduling](pkg/coscheduling/README.md)
-* [Node Resources](pkg/noderesources/README.md)
-* [Node Resource Topology](pkg/noderesourcetopology/README.md)
-* [Preemption Toleration](pkg/preemptiontoleration/README.md)
-* [Trimaran (Load-Aware Scheduling)](pkg/trimaran/README.md)
-* [Network-Aware Scheduling](pkg/networkaware/README.md)
-
-Additionally, the kube-scheduler binary includes the below list of sample plugins. These plugins are not intended for use in production
-environments.
-
-* [Cross Node Preemption](pkg/crossnodepreemption/README.md)
-* [Pod State](pkg/podstate/README.md)
-* [Quality of Service](pkg/qos/README.md)
-* [HyperAI](pkg/hyperai/README.md)
+* [HyperAI](pkg/hyperai/README.md) - ML-based node scoring with Python gRPC server integration
 
 ## Compatibility Matrix
 

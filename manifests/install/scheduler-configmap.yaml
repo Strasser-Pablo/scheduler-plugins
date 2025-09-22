@@ -12,14 +12,14 @@ data:
     profiles:
     - schedulerName: scheduler-plugins-scheduler
       plugins:
-        multiPoint:
+        score:
           enabled:
-          - name: Coscheduling
-          - name: CapacityScheduling
-          - name: NodeResourcesAllocatable
+          - name: HyperAI
+            weight: 100
           disabled:
-          - name: PrioritySort
+          - name: "*"
       pluginConfig:
-      - name: Coscheduling
+      - name: HyperAI
         args:
-          permitWaitingTimeSeconds: 10
+          grpcAddress: "localhost:50051"
+          score: 42

@@ -14,6 +14,8 @@ spec:
       labels:
         app: hyperai-triton-node-agent
     spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: hyperai-node-agent
       initContainers:
         # Copy model files to shared volume

@@ -14,6 +14,7 @@ RUN apt-get update && \
   gnupg lsb-release unzip tar build-essential \
   uidmap socat conntrack ebtables ethtool \
   python3 python3-pip python3-venv python3-dev \
+  protobuf-compiler \
   && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages globally for hyperai plugin development
@@ -61,6 +62,10 @@ RUN GOBIN=/usr/local/bin go install github.com/google/go-containerregistry/cmd/c
 # ko (updated to latest version compatible with Go 1.25)
 # Install ko
 RUN GOBIN=/usr/local/bin go install github.com/google/ko@v0.17.0
+
+# Install Protocol Buffer Go plugins for gRPC code generation
+RUN GOBIN=/usr/local/bin go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+RUN GOBIN=/usr/local/bin go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 
 
