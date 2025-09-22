@@ -17,24 +17,24 @@ limitations under the License.
 package validation
 
 import (
-"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
-"sigs.k8s.io/scheduler-plugins/apis/config"
+	"sigs.k8s.io/scheduler-plugins/apis/config"
 )
 
 // ValidateHyperAIArgs validates HyperAI arguments.
 func ValidateHyperAIArgs(path *field.Path, args *config.HyperAIArgs) error {
-var allErrs field.ErrorList
+	var allErrs field.ErrorList
 
-scorePath := path.Child("score")
-if args.Score < 0 || args.Score > 100 {
-allErrs = append(allErrs, field.Invalid(scorePath, args.Score, "score must be between 0 and 100"))
-}
+	scorePath := path.Child("score")
+	if args.Score < 0 || args.Score > 100 {
+		allErrs = append(allErrs, field.Invalid(scorePath, args.Score, "score must be between 0 and 100"))
+	}
 
-grpcAddressPath := path.Child("grpcAddress")
-if args.GRPCAddress == "" {
-allErrs = append(allErrs, field.Required(grpcAddressPath, "grpcAddress is required"))
-}
+	grpcAddressPath := path.Child("grpcAddress")
+	if args.GRPCAddress == "" {
+		allErrs = append(allErrs, field.Required(grpcAddressPath, "grpcAddress is required"))
+	}
 
-return allErrs.ToAggregate()
+	return allErrs.ToAggregate()
 }

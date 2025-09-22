@@ -17,71 +17,71 @@ limitations under the License.
 package main
 
 import (
-"context"
-"fmt"
-"net"
-"os"
-"path/filepath"
-"testing"
+	"context"
+	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"testing"
 
-"github.com/google/go-cmp/cmp"
-"github.com/spf13/pflag"
+	"github.com/google/go-cmp/cmp"
+	"github.com/spf13/pflag"
 
-clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-"k8s.io/kubernetes/cmd/kube-scheduler/app"
-"k8s.io/kubernetes/cmd/kube-scheduler/app/options"
-"k8s.io/kubernetes/pkg/scheduler/apis/config"
-"k8s.io/kubernetes/pkg/scheduler/apis/config/testing/defaults"
-"sigs.k8s.io/controller-runtime/pkg/envtest"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/kubernetes/cmd/kube-scheduler/app"
+	"k8s.io/kubernetes/cmd/kube-scheduler/app/options"
+	"k8s.io/kubernetes/pkg/scheduler/apis/config"
+	"k8s.io/kubernetes/pkg/scheduler/apis/config/testing/defaults"
+	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-"sigs.k8s.io/scheduler-plugins/pkg/hyperai"
+	"sigs.k8s.io/scheduler-plugins/pkg/hyperai"
 )
 
 func TestSetup(t *testing.T) {
-testEnv := &envtest.Environment{
-// No CRDs needed for HyperAI plugin
-}
+	testEnv := &envtest.Environment{
+		// No CRDs needed for HyperAI plugin
+	}
 
-// start envtest cluster
-cfg, err := testEnv.Start()
-defer testEnv.Stop()
-if err != nil {
-panic(err)
-}
+	// start envtest cluster
+	cfg, err := testEnv.Start()
+	defer testEnv.Stop()
+	if err != nil {
+		panic(err)
+	}
 
-// temp dir
-tmpDir, err := os.MkdirTemp("", "scheduler-options")
-if err != nil {
-t.Fatal(err)
-}
-defer os.RemoveAll(tmpDir)
+	// temp dir
+	tmpDir, err := os.MkdirTemp("", "scheduler-options")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
 
-clusters := make(map[string]*clientcmdapi.Cluster)
-clusters["default-cluster"] = &clientcmdapi.Cluster{
-Server:                   cfg.Host,
-CertificateAuthorityData: cfg.CAData,
-}
-// https://github.com/kubernetes-sigs/controller-runtime/blob/v0.16.3/examples/scratch-env/main.go
-user, err := testEnv.ControlPlane.AddUser(envtest.User{
-Name:   "envtest-admin",
-Groups: []string{"system:masters"},
-}, nil)
-if err != nil {
-t.Fatal(err)
-}
-kubeConfig, err := user.KubeConfig()
-if err != nil {
-t.Fatalf("unable to create kubeconfig: %v", err)
-}
+	clusters := make(map[string]*clientcmdapi.Cluster)
+	clusters["default-cluster"] = &clientcmdapi.Cluster{
+		Server:                   cfg.Host,
+		CertificateAuthorityData: cfg.CAData,
+	}
+	// https://github.com/kubernetes-sigs/controller-runtime/blob/v0.16.3/examples/scratch-env/main.go
+	user, err := testEnv.ControlPlane.AddUser(envtest.User{
+		Name:   "envtest-admin",
+		Groups: []string{"system:masters"},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	kubeConfig, err := user.KubeConfig()
+	if err != nil {
+		t.Fatalf("unable to create kubeconfig: %v", err)
+	}
 
-configKubeconfig := filepath.Join(tmpDir, "config.kubeconfig")
-if err := os.WriteFile(configKubeconfig, kubeConfig, os.FileMode(0600)); err != nil {
-t.Fatalf("unable to create kubeconfig file: %v", err)
-}
+	configKubeconfig := filepath.Join(tmpDir, "config.kubeconfig")
+	if err := os.WriteFile(configKubeconfig, kubeConfig, os.FileMode(0600)); err != nil {
+		t.Fatalf("unable to create kubeconfig file: %v", err)
+	}
 
-// HyperAI plugin config
-hyperaiConfigFile := filepath.Join(tmpDir, "hyperai.yaml")
-if err := os.WriteFile(hyperaiConfigFile, []byte(fmt.Sprintf(`
+	// HyperAI plugin config
+	hyperaiConfigFile := filepath.Join(tmpDir, "hyperai.yaml")
+	if err := os.WriteFile(hyperaiConfigFile, []byte(fmt.Sprintf(`
 apiVersion: kubescheduler.config.k8s.io/v1
 kind: KubeSchedulerConfiguration
 clientConnection:
@@ -100,86 +100,86 @@ profiles:
       grpcAddress: "localhost:50051"
       score: 42
 `, configKubeconfig)), os.FileMode(0600)); err != nil {
-t.Fatal(err)
-}
+		t.Fatal(err)
+	}
 
-testcases := []struct {
-name            string
-flags           []string
-registryOptions []app.Option
-wantPlugins     map[string]*config.Plugins
-}{
-{
-name: "default config",
-flags: []string{
-"--kubeconfig", configKubeconfig,
-},
-wantPlugins: map[string]*config.Plugins{
-"default-scheduler": defaults.ExpandedPluginsV1,
-},
-},
-{
-name:            "single profile config - HyperAI",
-flags:           []string{"--config", hyperaiConfigFile},
-registryOptions: []app.Option{app.WithPlugin(hyperai.Name, hyperai.New)},
-wantPlugins: map[string]*config.Plugins{
-"default-scheduler": {
-PreEnqueue: defaults.ExpandedPluginsV1.PreEnqueue,
-QueueSort:  defaults.ExpandedPluginsV1.QueueSort,
-Bind:       defaults.ExpandedPluginsV1.Bind,
-PreFilter:  defaults.ExpandedPluginsV1.PreFilter,
-Filter:     defaults.ExpandedPluginsV1.Filter,
-PostFilter: defaults.ExpandedPluginsV1.PostFilter,
-PreScore:   defaults.ExpandedPluginsV1.PreScore,
-Score:      config.PluginSet{Enabled: []config.Plugin{{Name: hyperai.Name, Weight: 100}}},
-Reserve:    defaults.ExpandedPluginsV1.Reserve,
-PreBind:    defaults.ExpandedPluginsV1.PreBind,
-},
-},
-},
-}
+	testcases := []struct {
+		name            string
+		flags           []string
+		registryOptions []app.Option
+		wantPlugins     map[string]*config.Plugins
+	}{
+		{
+			name: "default config",
+			flags: []string{
+				"--kubeconfig", configKubeconfig,
+			},
+			wantPlugins: map[string]*config.Plugins{
+				"default-scheduler": defaults.ExpandedPluginsV1,
+			},
+		},
+		{
+			name:            "single profile config - HyperAI",
+			flags:           []string{"--config", hyperaiConfigFile},
+			registryOptions: []app.Option{app.WithPlugin(hyperai.Name, hyperai.New)},
+			wantPlugins: map[string]*config.Plugins{
+				"default-scheduler": {
+					PreEnqueue: defaults.ExpandedPluginsV1.PreEnqueue,
+					QueueSort:  defaults.ExpandedPluginsV1.QueueSort,
+					Bind:       defaults.ExpandedPluginsV1.Bind,
+					PreFilter:  defaults.ExpandedPluginsV1.PreFilter,
+					Filter:     defaults.ExpandedPluginsV1.Filter,
+					PostFilter: defaults.ExpandedPluginsV1.PostFilter,
+					PreScore:   defaults.ExpandedPluginsV1.PreScore,
+					Score:      config.PluginSet{Enabled: []config.Plugin{{Name: hyperai.Name, Weight: 100}}},
+					Reserve:    defaults.ExpandedPluginsV1.Reserve,
+					PreBind:    defaults.ExpandedPluginsV1.PreBind,
+				},
+			},
+		},
+	}
 
-makeListener := func(t *testing.T) net.Listener {
-t.Helper()
-l, err := net.Listen("tcp", ":0")
-if err != nil {
-t.Fatal(err)
-}
-return l
-}
+	makeListener := func(t *testing.T) net.Listener {
+		t.Helper()
+		l, err := net.Listen("tcp", ":0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return l
+	}
 
-for _, tc := range testcases {
-t.Run(tc.name, func(t *testing.T) {
-fs := pflag.NewFlagSet("test", pflag.PanicOnError)
-opts := options.NewOptions()
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			fs := pflag.NewFlagSet("test", pflag.PanicOnError)
+			opts := options.NewOptions()
 
-nfs := opts.Flags
-for _, f := range nfs.FlagSets {
-fs.AddFlagSet(f)
-}
-if err := fs.Parse(tc.flags); err != nil {
-t.Fatal(err)
-}
+			nfs := opts.Flags
+			for _, f := range nfs.FlagSets {
+				fs.AddFlagSet(f)
+			}
+			if err := fs.Parse(tc.flags); err != nil {
+				t.Fatal(err)
+			}
 
-// use listeners instead of static ports so parallel test runs don't conflict
-opts.SecureServing.Listener = makeListener(t)
-defer opts.SecureServing.Listener.Close()
+			// use listeners instead of static ports so parallel test runs don't conflict
+			opts.SecureServing.Listener = makeListener(t)
+			defer opts.SecureServing.Listener.Close()
 
-ctx, cancel := context.WithCancel(context.Background())
-defer cancel()
-_, sched, err := app.Setup(ctx, opts, tc.registryOptions...)
-if err != nil {
-t.Fatal(err)
-}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			_, sched, err := app.Setup(ctx, opts, tc.registryOptions...)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-gotPlugins := make(map[string]*config.Plugins)
-for n, p := range sched.Profiles {
-gotPlugins[n] = p.ListPlugins()
-}
+			gotPlugins := make(map[string]*config.Plugins)
+			for n, p := range sched.Profiles {
+				gotPlugins[n] = p.ListPlugins()
+			}
 
-if diff := cmp.Diff(tc.wantPlugins, gotPlugins); diff != "" {
-t.Errorf("unexpected plugins diff (-want, +got): %s", diff)
-}
-})
-}
+			if diff := cmp.Diff(tc.wantPlugins, gotPlugins); diff != "" {
+				t.Errorf("unexpected plugins diff (-want, +got): %s", diff)
+			}
+		})
+	}
 }
