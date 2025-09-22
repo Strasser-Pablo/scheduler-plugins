@@ -22,4 +22,4 @@ data:
       - name: HyperAI
         args:
           grpcAddress: "localhost:50051"
-          score: 42
+          score: 0

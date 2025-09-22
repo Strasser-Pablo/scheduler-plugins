@@ -30,6 +30,6 @@ type HyperAIArgs struct {
 	GRPCAddress string `json:"grpcAddress,omitempty"`
 
 	// Score is the constant score value to return for all nodes (for initial version).
-	// Valid range is 0-100. Default is 42.
+	// Valid range is 0-100. Default is 0.
 	Score int64 `json:"score,omitempty"`
 }

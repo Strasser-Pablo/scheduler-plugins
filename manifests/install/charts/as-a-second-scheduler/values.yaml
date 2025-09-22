@@ -38,4 +38,4 @@ pluginConfig:
   - name: HyperAI
     args:
       grpcAddress: "localhost:50051" # gRPC server address for Python scoring service
-      score: 42 # fallback score when gRPC unavailable
+      score: 0 # fallback score when gRPC unavailable

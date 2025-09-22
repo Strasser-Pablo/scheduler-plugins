@@ -33,7 +33,7 @@ func TestHyperAIIntegration(t *testing.T) {
 	if status != nil && !status.IsSuccess() {
 		t.Errorf("expected success, got %v", status)
 	}
-	if score != 42 {
-		t.Errorf("expected score 42, got %d", score)
+	if score != 0 {
+		t.Errorf("expected score 0, got %d", score)
 	}
 }

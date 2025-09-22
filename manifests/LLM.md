@@ -124,7 +124,7 @@ data:
       pluginConfig:
       - name: ConstantScore
         args:
-          score: 42  # Return constant score of 42 for all nodes
+          score: 0   # Return constant score of 0 for all nodes
 ```
 
 #### Scheduler Deployment (`scheduler-deployment.yaml`)

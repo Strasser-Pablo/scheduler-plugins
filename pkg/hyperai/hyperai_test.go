@@ -33,3 +33,27 @@ func TestHyperAIScore(t *testing.T) {
 		t.Errorf("expected score 42, got %d", score)
 	}
 }
+
+func TestHyperAIDefaultScore(t *testing.T) {
+	// Test with default configuration (no score specified)
+	args := &config.HyperAIArgs{
+		GRPCAddress: "localhost:50051",
+		// Score not specified, should default to 0
+	}
+	plugin, err := New(klog.NewContext(context.Background(), klog.NewKlogr()), args, nil)
+	if err != nil {
+		t.Fatalf("failed to create plugin: %v", err)
+	}
+	hyperai := plugin.(*HyperAI)
+	pod := &v1.Pod{}
+	node := &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "node1"}}
+	nodeInfo := framework.NewNodeInfo()
+	nodeInfo.SetNode(node)
+	score, status := hyperai.Score(context.Background(), framework.NewCycleState(), pod, nodeInfo)
+	if status != nil && !status.IsSuccess() {
+		t.Errorf("expected success, got %v", status)
+	}
+	if score != 0 {
+		t.Errorf("expected default score 0, got %d", score)
+	}
+}

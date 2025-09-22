@@ -532,7 +532,7 @@ profiles:
       # Service architecture
       # grpcAddress: "hyperai-grpc-service.scheduler-plugins.svc.cluster.local:50051"
       
-      score: 42                               # Fallback score
+      score: 0                                # Fallback score
 ```
 
 #### HyperAI DaemonSet Architecture

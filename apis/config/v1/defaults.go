@@ -21,7 +21,7 @@ var (
 	// DefaultHyperAIGRPCAddress is the default gRPC server address
 	DefaultHyperAIGRPCAddress = "localhost:50051"
 	// DefaultHyperAIScore is the default fallback score returned by the HyperAI plugin
-	DefaultHyperAIScore int64 = 42
+	DefaultHyperAIScore int64 = 0
 )
 
 // SetDefaults_HyperAIArgs sets the default parameters for HyperAI plugin.

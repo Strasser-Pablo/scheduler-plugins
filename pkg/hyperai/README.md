@@ -71,7 +71,7 @@ profiles:
   - name: HyperAI
     args:
       grpcAddress: "localhost:50051"
-      score: 42
+      score: 0
 ```
 
 ## Development Workflow
@@ -94,4 +94,4 @@ make hyperai-test-grpc
 - The plugin now serializes the full Pod and Node objects to JSON and sends them in the gRPC request.
 - The Python server receives and can parse these JSON fields for advanced scoring logic.
 - The plugin gracefully handles gRPC connection failures by falling back to constant scoring.
-- Currently returns a constant score of 42 but the gRPC infrastructure is in place for advanced scoring algorithms.
+- Currently returns a constant score of 0 but the gRPC infrastructure is in place for advanced scoring algorithms.

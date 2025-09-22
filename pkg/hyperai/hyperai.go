@@ -107,9 +107,7 @@ func New(ctx context.Context, args runtime.Object, h framework.Handle) (framewor
 	if pluginArgs.GRPCAddress == "" {
 		pluginArgs.GRPCAddress = "localhost:50051"
 	}
-	if pluginArgs.Score == 0 {
-		pluginArgs.Score = 42
-	}
+	// Score defaults to 0 (no action needed as 0 is the zero value)
 
 	logger.Info("Creating HyperAI plugin", "grpcAddress", pluginArgs.GRPCAddress, "fallbackScore", pluginArgs.Score)
 

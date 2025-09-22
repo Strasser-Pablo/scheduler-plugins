@@ -28,4 +28,4 @@ data:
       - name: HyperAI
         args:
           grpcAddress: "hyperai-grpc-service.scheduler-plugins.svc.cluster.local:50051"
-          score: 42
+          score: 0
