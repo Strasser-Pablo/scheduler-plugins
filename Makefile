@@ -90,50 +90,6 @@ controller-gen: $(LOCALBIN) ## Download controller-gen locally if necessary.
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
-# ConstantScore Plugin targets
-.PHONY: constantscore-image
-constantscore-image:
-	@echo "Building ConstantScore image..."
-	CGO_ENABLED=0 GOOS=linux $(BUILDENVVAR) go build -ldflags '-X k8s.io/component-base/version.gitVersion=$(VERSION) -w' -o bin/kube-scheduler cmd/scheduler/main.go
-	docker build -f Dockerfile.constantscore -t constantscore-scheduler:latest .
-
-.PHONY: constantscore-load-kind
-constantscore-load-kind: constantscore-image
-	kind load docker-image constantscore-scheduler:latest --name $(KIND_CLUSTER_NAME)
-
-.PHONY: constantscore-deploy
-constantscore-deploy: constantscore-load-kind
-	@echo "Deploying ConstantScore scheduler..."
-	kubectl get ns scheduler-plugins >/dev/null 2>&1 || kubectl create ns scheduler-plugins
-	kubectl apply -f manifests/install/scheduler-serviceaccount.yaml
-	kubectl apply -f manifests/install/scheduler-clusterrole.yaml
-	kubectl apply -f manifests/install/scheduler-clusterrolebinding.yaml
-	kubectl apply -f manifests/constantscore/scheduler-config.yaml
-	kubectl apply -f manifests/constantscore/scheduler-deployment.yaml
-	kubectl -n scheduler-plugins rollout status deploy/constantscore-scheduler --timeout=90s
-
-.PHONY: constantscore-test
-constantscore-test: constantscore-deploy
-	@echo "Running ConstantScore test..."
-	kubectl apply -f manifests/constantscore/test-pod.yaml
-	kubectl wait --for=condition=Ready pod/test-constantscore --timeout=60s
-	@echo "ConstantScore test pod deployed successfully!"
-	kubectl get pod test-constantscore -o wide
-
-.PHONY: constantscore-logs
-constantscore-logs:
-	@echo "Fetching ConstantScore logs..."
-	kubectl -n scheduler-plugins logs deploy/constantscore-scheduler --tail=50 | grep -i constantscore || true
-
-.PHONY: constantscore-cleanup
-constantscore-cleanup:
-	@echo "Cleaning up ConstantScore resources..."
-	kubectl delete -f manifests/constantscore/test-pod.yaml --ignore-not-found=true
-	kubectl delete -f manifests/constantscore/scheduler-deployment.yaml --ignore-not-found=true
-	kubectl delete -f manifests/constantscore/scheduler-config.yaml --ignore-not-found=true
-
-.PHONY: constantscore-full-test
-constantscore-full-test: constantscore-cleanup constantscore-test constantscore-logs
 
 # HyperAI Production targets (Real NVIDIA Triton ML Inference)
 .PHONY: hyperai-proto
@@ -270,13 +226,6 @@ help:
 	@echo "  unit-test           - Run unit tests"
 	@echo "  integration-test    - Run integration tests"
 	@echo "  verify              - Run all verification checks"
-	@echo ""
-	@echo "ConstantScore Plugin:"
-	@echo "  constantscore-deploy         - Deploy ConstantScore scheduler"
-	@echo "  constantscore-test           - Test ConstantScore with test pod"
-	@echo "  constantscore-logs           - Show ConstantScore logs"
-	@echo "  constantscore-cleanup        - Clean up ConstantScore resources"
-	@echo "  constantscore-full-test      - Full test cycle (cleanup + test + logs)"
 	@echo ""
 	@echo "HyperAI Production (Real ML Inference):"
 	@echo "  hyperai-deploy               - Deploy HyperAI with Triton inference"
