@@ -1,0 +1,22 @@
+# Basic HyperAI Plugin Dependencies
+# Core gRPC functionality
+grpcio>=1.75.0
+grpcio-tools>=1.75.0
+
+# Kubernetes client for node discovery
+kubernetes>=29.0.0
+
+# Protocol Buffers
+protobuf>=4.25.0
+
+# Optional: PyTorch for model generation
+torch>=2.0.0
+
+# Optional: NumPy for numerical operations
+numpy>=1.24.0
+
+# Optional: ONNX for model export
+onnx>=1.15.0
+
+# Optional: Triton client for advanced inference
+tritonclient[http]>=2.60.0

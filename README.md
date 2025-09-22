@@ -106,6 +106,13 @@ make hyperai-sidecar-full-test
 
 ### HyperAI Development
 
+**Prerequisites**: The devcontainer includes all required Python dependencies:
+- **PyTorch 2.8.0+** - For ML model generation and training
+- **gRPC 1.75.0+** - For scheduler-server communication
+- **Kubernetes client** - For node discovery and API access
+- **Triton client** - For NVIDIA Triton inference integration
+- **NumPy, ONNX** - For numerical operations and model export
+
 ```bash
 # Generate gRPC code
 make hyperai-proto

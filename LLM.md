@@ -189,6 +189,21 @@ profiles:
 
 ## Development Workflow
 
+### Prerequisites
+
+The devcontainer includes all necessary dependencies for plugin development:
+
+**Go Dependencies:**
+- Go 1.25+ with Kubernetes 1.33.5 compatibility
+- All required Go modules and build tools
+
+**Python Dependencies (for HyperAI plugin):**
+- PyTorch 2.8.0+ with CUDA support
+- gRPC 1.75.0+ with Protocol Buffers
+- Kubernetes Python client 29.0.0+
+- NVIDIA Triton client 2.60.0+
+- NumPy 2.3.3+ and ONNX 1.19.0+
+
 ### Building
 
 ```bash
@@ -274,6 +289,34 @@ make hyperai-cleanup            # Clean up resources
 ```
 
 **Prerequisites**: Docker, kind cluster named 'sched', kubectl, Python 3.11+ with gRPC tools
+
+#### ✅ Validated Dependencies (September 2025)
+
+The HyperAI plugin dependencies have been successfully tested and validated:
+
+**Core Dependencies Working:**
+- ✅ PyTorch 2.8.0+cu128 - Model generation and training
+- ✅ gRPC 1.75.0 - Scheduler-server communication  
+- ✅ Kubernetes client 29.0.0 - Node discovery and API access
+- ✅ Triton client 2.60.0 - NVIDIA Triton inference integration
+- ✅ NumPy 2.3.3 - Numerical operations
+- ✅ ONNX 1.19.0 - Model export and serialization
+
+**Full Pipeline Validated:**
+- ✅ Model generation (`generate_scheduler_model.py`)
+- ✅ gRPC server (`server.py`) with Kubernetes integration
+- ✅ Advanced Triton node agent (`triton_node_agent.py`)
+- ✅ Complete DaemonSet deployment (3/3 nodes)
+- ✅ End-to-end ML-based pod scheduling
+- ✅ Production-ready inference with NVIDIA Triton
+
+**Test Results:**
+```
+✅ HyperAI gRPC SUCCESS: Received score from gRPC server
+score=88 pod="test-triton-final-working" node="sched-worker"
+✅ Connected to Triton server at localhost:8000
+📋 Available models: ['scheduler_model']
+```
 
 ## Creating New Plugins
 

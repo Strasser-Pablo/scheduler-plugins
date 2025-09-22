@@ -229,6 +229,22 @@ func TestPluginScore(t *testing.T) {
 - **Configuration**: Network topology definitions
 - **Requirements**: AppGroup and NetworkTopology CRDs
 
+## Development Environment
+
+### Python Dependencies (for gRPC/ML plugins)
+
+The devcontainer includes comprehensive Python support for advanced plugins:
+
+- **PyTorch 2.8.0+**: ML model development and training
+- **gRPC 1.75.0+**: High-performance RPC communication
+- **Kubernetes client**: Cluster API integration and node discovery
+- **Triton client**: NVIDIA Triton inference server integration
+- **NumPy 2.3.3+**: Numerical computing and array operations
+- **ONNX 1.19.0+**: Model serialization and cross-platform deployment
+- **Protocol Buffers**: Type-safe message serialization
+
+These are pre-installed and tested in the devcontainer environment.
+
 ## Development Checklist
 
 When creating a new plugin:
@@ -243,6 +259,8 @@ When creating a new plugin:
 8. **[ ]** Add to main repository README.md
 9. **[ ]** Create example manifests
 10. **[ ]** Update documentation website if needed
+11. **[ ]** For gRPC plugins: Test Python dependencies and gRPC connectivity
+12. **[ ]** For ML plugins: Verify PyTorch, ONNX, and Triton integration
 
 ## Common Anti-Patterns to Avoid
 

@@ -39,7 +39,9 @@
         "usernamehw.errorlens",
         "eamodio.gitlens",
         "streetsidesoftware.code-spell-checker",
-        "EditorConfig.EditorConfig"
+        "EditorConfig.EditorConfig",
+        "ms-python.python",
+        "ms-python.black-formatter"
       ],
       "settings": {
         "go.toolsManagement.autoUpdate": true,
@@ -52,6 +54,17 @@
         "editor.formatOnSave": true,
         "yaml.schemas": {
           "kubernetes": "manifests/**/*.yaml"
+        },
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.linting.flake8Enabled": true,
+        "python.formatting.provider": "black",
+        "[python]": {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
         }
       }
     }
