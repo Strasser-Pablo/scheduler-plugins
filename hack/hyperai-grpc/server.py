@@ -82,8 +82,8 @@ class HyperAIServicer(hyperai_pb2_grpc.HyperAIServicer):
                 final_score = node_score
                 logger.info(f"✅ Received score from node agent: {final_score}")
             else:
-                # Fallback to original constant score
-                final_score = 88
+                # Fallback when node agent is unavailable
+                final_score = 0
                 logger.info(
                     f"⚠️  Using fallback score (node agent unavailable): {final_score}"
                 )
