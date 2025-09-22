@@ -40,6 +40,8 @@ This repository (`scheduler-plugins`) contains out-of-tree scheduler plugins for
 20. **Version your Protocol Buffers** for backward compatibility
 21. **Test both success and failure scenarios** extensively
 22. **Use Kubernetes API for service discovery** in DaemonSet architectures
+23. **Optimize container images for kind clusters** - use `kind load docker-image` to pre-load large images (like NVIDIA Triton ~9GB) and set `imagePullPolicy: Never` to avoid redundant downloads
+24. **Implement image caching strategies** for development workflows to reduce deployment times
 
 ### Performance Considerations
 
@@ -47,7 +49,9 @@ This repository (`scheduler-plugins`) contains out-of-tree scheduler plugins for
 - **Memory usage**: Avoid large allocations in scoring path
 - **gRPC overhead**: Sidecar communication has ~100x lower latency than service calls
 - **Caching**: Cache expensive computations when appropriate
-- **Batch operations**: Consider batching multiple scoring requests kubernetes-sigs/scheduler-plugins
+- **Batch operations**: Consider batching multiple scoring requests
+- **Image optimization**: Pre-load large images (NVIDIA Triton ~9GB) into kind clusters using `kind load docker-image` to avoid ~19GB+ of redundant downloads across nodes
+- **Container registry efficiency**: Use `imagePullPolicy: Never` in DaemonSet deployments to ensure pods use locally cached images kubernetes-sigs/scheduler-plugins
 - **Current Branch**: hyper-ai (default: master)
 
 ## Repository Structure
@@ -511,6 +515,7 @@ The DaemonSet architecture deploys node agents on every Kubernetes node for dist
 - **Distributed scaling**: Scoring load distributed across nodes  
 - **Production ready**: Robust architecture with automatic node discovery
 - **ML-friendly**: Perfect for node-specific inference with NVIDIA Triton or similar
+- **Image optimization**: Automatic pre-loading of large container images (Triton ~9GB) into kind cluster to eliminate redundant downloads
 
 **Deployment:**
 ```bash
@@ -522,6 +527,44 @@ kubectl apply -f manifests/hyperai/node-agent-rbac.yaml      # RBAC permissions
 kubectl apply -f manifests/hyperai/node-agent-daemonset.yaml # Node agents
 kubectl apply -f manifests/hyperai/sidecar.yaml             # Scheduler with central server
 ```
+
+#### HyperAI Image Optimization for Kind Clusters
+
+The HyperAI deployment includes automatic optimization for large container images, particularly the NVIDIA Triton server image (~9GB):
+
+**Problem Solved:**
+- **Redundant Downloads**: Without optimization, each kind cluster node downloads the same 9GB Triton image independently
+- **Network Overhead**: 3-node cluster = ~27GB of redundant network traffic
+- **Deployment Delays**: Large image downloads significantly slow pod startup times
+- **Registry Rate Limits**: Multiple concurrent pulls may trigger rate limiting
+
+**Optimization Implementation:**
+```yaml
+# In Makefile - hyperai-build-images target
+docker pull nvcr.io/nvidia/tritonserver:24.12-py3
+
+# In Makefile - hyperai-load-kind target  
+kind load docker-image nvcr.io/nvidia/tritonserver:24.12-py3 --name $(KIND_CLUSTER_NAME)
+
+# In DaemonSet manifest - triton-server container
+imagePullPolicy: Never  # Forces use of locally cached image
+```
+
+**Benefits Achieved:**
+- **Single Download**: Triton image pulled once during build phase
+- **~19GB+ Bandwidth Savings**: Eliminates redundant downloads in 3-node cluster
+- **Faster Deployment**: Pods start immediately using cached images
+- **Development Efficiency**: Significant time savings during iterative development
+- **Registry Reliability**: No dependency on external registry during pod scheduling
+
+**Usage Pattern:**
+```bash
+# All hyperai targets automatically include optimization
+make hyperai-deploy                    # Includes automatic image optimization
+make hyperai-daemonset-full-test      # Complete test with optimized images
+```
+
+This optimization is transparent to users but provides substantial benefits for development workflows and CI/CD pipelines.
 
 #### HyperAI gRPC Protocol
 
@@ -705,6 +748,14 @@ yourplugin-proto:
 8. **Docker image issues**: Ensure images are loaded into kind cluster correctly
 9. **Readiness probe failures**: Configure appropriate health checks for gRPC servers
 10. **Type conversion errors**: Ensure plugin args types are registered in both `config` and `config/v1` packages
+11. **Image pull failures in kind**: 
+    - Verify images are loaded with `kind load docker-image` before deployment
+    - Check `imagePullPolicy: Never` is set for locally loaded images
+    - Use `docker exec -it <cluster>-control-plane crictl images` to verify image presence
+12. **Large image download issues**: 
+    - For NVIDIA Triton (~9GB), use the built-in optimization in `hyperai-load-kind` target
+    - Monitor network usage - optimization should eliminate redundant downloads
+    - If seeing multiple pulls, verify `imagePullPolicy: Never` is configured correctly
 
 ## Additional Resources
 

@@ -69,6 +69,17 @@ The HyperAI plugin sends the full Pod and Node specs as JSON strings in the gRPC
 - **hyperai-stop-grpc**: Stops the Python gRPC server.
 - **hyperai-test-grpc**: Tests gRPC connectivity.
 
+### HyperAI Image Optimization
+
+The HyperAI targets include automatic optimization for the NVIDIA Triton server image (~9GB) used in production deployments. When using `hyperai-deploy` or related targets, the system:
+
+1. **Single Download**: Pulls the Triton image once during the build phase
+2. **Kind Integration**: Loads the image into the kind cluster's internal registry using `kind load docker-image`
+3. **Cached Deployment**: DaemonSet pods use `imagePullPolicy: Never` to ensure they use the locally cached image
+4. **Bandwidth Efficiency**: Eliminates redundant downloads across multiple nodes
+
+This optimization significantly reduces deployment time and network usage, especially beneficial for development environments where deployments happen frequently.
+
 ### HyperAI Quick Start (DaemonSet - Production)
 
 The `hyperai-daemonset-full-test` target is the recommended way to build, deploy, and validate the HyperAI plugin with DaemonSet architecture for production-like deployments:

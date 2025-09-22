@@ -150,6 +150,8 @@ hyperai-build-images:
 	docker build -f Dockerfile.constantscore -t $(HYPERAI_IMAGE_NAME):$(HYPERAI_IMAGE_TAG) .
 	cd hack/hyperai-grpc && docker build -t hyperai-grpc-server:latest .
 	cd hack/hyperai-grpc && docker build -f Dockerfile.triton-node-agent -t hyperai-triton-node-agent:latest .
+	@echo "Pulling NVIDIA Triton server image..."
+	docker pull nvcr.io/nvidia/tritonserver:24.12-py3
 
 .PHONY: hyperai-load-kind
 hyperai-load-kind: hyperai-build-images
@@ -157,6 +159,8 @@ hyperai-load-kind: hyperai-build-images
 	kind load docker-image $(HYPERAI_IMAGE_NAME):$(HYPERAI_IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
 	kind load docker-image hyperai-grpc-server:latest --name $(KIND_CLUSTER_NAME)
 	kind load docker-image hyperai-triton-node-agent:latest --name $(KIND_CLUSTER_NAME)
+	@echo "Loading NVIDIA Triton server image into Kind cluster..."
+	kind load docker-image nvcr.io/nvidia/tritonserver:24.12-py3 --name $(KIND_CLUSTER_NAME)
 
 .PHONY: hyperai-setup-rbac
 hyperai-setup-rbac:

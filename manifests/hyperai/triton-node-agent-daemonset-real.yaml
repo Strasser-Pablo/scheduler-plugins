@@ -28,6 +28,7 @@ spec:
         # Real NVIDIA Triton Inference Server (sidecar)
         - name: triton-server
           image: nvcr.io/nvidia/tritonserver:24.12-py3
+          imagePullPolicy: Never
           args:
             - tritonserver
             - --model-repository=/models
